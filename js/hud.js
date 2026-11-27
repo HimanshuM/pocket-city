@@ -1,11 +1,12 @@
 /* ---------- HUD and minimap ---------- */
 const map=$('map'),mg=map.getContext('2d');
+const MAP_COLS={park:'#6fae57',custom:'#e9dcc0',residential:'#a9c98f',industrial:'#8d8f94'};
 function sizeMap(){const s=map.clientWidth*Math.min(2,devicePixelRatio||1);if(map.width!==s){map.width=map.height=s;}}
 function drawMap(F){
   sizeMap();const W=map.width,sc=W/240;mg.setTransform(1,0,0,1,0,0);mg.fillStyle='#2f3238';mg.fillRect(0,0,W,W);
   mg.translate(W/2,W/2);mg.rotate(cam.yaw);mg.scale(sc,sc);mg.translate(-F.x,-F.z);
   for(const ch of chunks.values()){const x0=ch.cx*CH+ROADW,z0=ch.cz*CH+ROADW;if(Math.abs(x0+LOT-F.x)>220||Math.abs(z0+LOT-F.z)>220)continue;
-    mg.fillStyle=ch.type==='park'?'#6fae57':ch.type==='custom'?'#e9dcc0':'#bdb5a6';mg.fillRect(x0,z0,LOT*2,LOT*2);
+    mg.fillStyle=MAP_COLS[ch.type]||'#bdb5a6';mg.fillRect(x0,z0,LOT*2,LOT*2);
     mg.fillStyle='#867a6b';for(const b of ch.boxes)if(b[4]>6)mg.fillRect(b[0],b[1],b[2]-b[0],b[3]-b[1]);}
   mg.fillStyle='#ffffff';for(const c of traffic)mg.fillRect(c.obj.position.x-2,c.obj.position.z-2,4,4);
   mg.fillStyle='#19b3a6';for(const c of freeCars){mg.beginPath();mg.arc(c.obj.position.x,c.obj.position.z,4,0,7);mg.fill();}

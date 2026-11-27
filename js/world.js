@@ -50,22 +50,93 @@ function townSquare(k){
     B.box(x,0.2,z,12,7,12,cafe[n],true);P.box(x,7.2,z,12.4,0.5,12.4,shade(cafe[n],0.8));solid(k,x,z,6,6,7.7);
     P.box(x-sx*6.6,3.3,z,1.2,0.18,9,AWN[n]);P.box(x,3.3,z-sz*6.6,9,0.18,1.2,AWN[n]);n++;}
 }
+/* districts: the map is split into irregular regions of roughly 4x4 blocks, each with its own kind of block */
+const DCELL=4;
+function districtAt(cx,cz){
+  if(Math.hypot(cx+0.5,cz+0.5)<2.6)return 'downtown';
+  const gx=Math.floor(cx/DCELL),gz=Math.floor(cz/DCELL);let best=1e9,type='city';
+  for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){  // nearest random centre point wins
+    const r=rng(hash2(gx+i+7777,gz+j-7777)),px=(gx+i+r())*DCELL,pz=(gz+j+r())*DCELL,roll=r(),d=Math.hypot(px-cx-0.5,pz-cz-0.5);
+    if(d<best){best=d;type=roll<0.45?'residential':roll<0.7?'industrial':'city';}}
+  if(type==='industrial'&&Math.hypot(cx,cz)<5)type='city';  // keep factories away from the centre
+  return type;
+}
+function residential(k){
+  const {B,P,r}=k,pw=20;
+  for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){
+    const px=i*pw,pz=j*pw;
+    if(!i&&!j){  // shared garden with a pool in the middle of the block
+      P.box(0,0.2,0,pw-0.8,0.06,pw-0.8,0x6aab4f);P.box(0,0.2,0,8,0.1,5,0xb9ad93);P.box(0,0.27,0,7,0.04,4,0x4aa3cf);
+      for(const sx of [-1,1])for(const sz of [-1,1])tree(k,sx*6.5,sz*6.5,0.9+r()*0.3);
+      continue;}
+    // each house faces its nearest street. In plot coordinates a points toward the street and b sideways.
+    const fx=j?0:i,fz=j,ax=!!fz,at=(a,b)=>[px+fx*a+(ax?b:0),pz+fz*a+(ax?0:b)],dims=(la,ld)=>ax?[la,ld]:[ld,la];
+    const pbox=(a,b,y,la,h,ld,col)=>{const [x,z]=at(a,b),[sx,sz]=dims(la,ld);P.box(x,y,z,sx,h,sz,col);return [x,z,sx,sz];};
+    P.box(px,0.2,pz,pw-0.8,0.06,pw-0.8,pick(GREENS,r));
+    const w=8+r()*3,d=7+r()*2,h=(r()<0.55?2:1)*3.5,rh=2+r()*1.2,col=pick(HOUSE_COLS,r),[hx,hz]=at(-2,0),[sx,sz]=dims(w,d);
+    B.box(hx,0.2,hz,sx,h,sz,col,true);P.roof(hx,0.2+h,hz,sx+0.8,rh,sz+0.8,pick(ROOF_COLS,r),ax,col);solid(k,hx,hz,sx/2,sz/2,0.2+h+rh);
+    pbox(d/2-1.95,0.2,0,1.2,2.3,0.12,0x6b4a2f);  // front door
+    const db=(r()<0.5?-1:1)*(w/2+1.8),front=d/2-2;
+    pbox(3.8,0.2,db,3,0.08,11.6,0x8e8a84);  // driveway
+    pbox((front+9.6)/2,0.2,0,1.2,0.08,9.6-front,0xcfc7b8);  // front path
+    // low white fence along the street, with gaps for the path and the driveway
+    let b0=-9.6;
+    for(const [g0,g1] of [[-0.9,0.9],[db-1.7,db+1.7]].sort((p,q)=>p[0]-q[0]).concat([[9.6,9.6]])){
+      if(g0-b0>0.3){const [x,z,fsx,fsz]=pbox(9.4,0.2,(b0+g0)/2,g0-b0,0.9,0.12,0xf4f1ea);solid(k,x,z,fsx/2,fsz/2,1.1);}b0=g1;}
+    for(const s of [-1,1])if(r()<0.6)tree(k,...at(-8.2,s*7.5),0.8+r()*0.3);
+    if(r()<0.25){const [x,z]=at(4.5,db),c=makeCar(pick(CAR_COLS,r));placeCar(c,k.ox+x,k.oz+z,Math.atan2(fx,fz));k.cars.push(c);}
+  }
+  for(const t of [-21,-7,7,21]){ if(r()<0.7)tree(k,33,t,0.8); if(r()<0.7)tree(k,-33,t,0.8); if(r()<0.7)tree(k,t,33,0.8); if(r()<0.7)tree(k,t,-33,0.8); }
+}
+function fence(k,x,z,len,alongX){  // posts and rails; solid, so you go in through the gates
+  const {P}=k,n=Math.max(1,Math.round(len/2.5));
+  for(let i=0;i<=n;i++){const t=-len/2+i*len/n;P.box(alongX?x+t:x,0.2,alongX?z:z+t,0.12,2.2,0.12,0x6f757c);}
+  for(const y of [0.4,1.3,2.2])P.box(x,0.2+y-0.03,z,alongX?len:0.06,0.06,alongX?0.06:len,0x8a9098);
+  solid(k,x,z,alongX?len/2:0.1,alongX?0.1:len/2,2.4);
+}
+function industrial(k){
+  const {B,P,r}=k;
+  P.box(0,0.2,0,60,0.04,60,0x63666d);  // asphalt yard
+  for(const s of [-1,1])for(const half of [-1,1]){fence(k,half*17.75,s*30.5,25.5,true);fence(k,s*30.5,half*17.75,25.5,false);}
+  // warehouse along one side, with an office at one end and roller doors facing the yard
+  const sx=r()<0.5?-1:1,ww=26+r()*6,wd=36+r()*10,wh=7+r()*4,col=pick(IND_COLS,r);
+  const wx=sx*(28-ww/2),wz=(r()-0.5)*(48-wd)+4,az=wz-wd/2-4,aw=Math.min(ww-4,12);
+  P.box(wx,0.2,wz,ww,wh,wd,col);P.box(wx,0.2+wh*0.55,wz,ww+0.08,0.5,wd+0.08,shade(col,0.8));P.box(wx,0.2+wh,wz,ww+0.2,0.35,wd+0.2,shade(col,0.75));
+  solid(k,wx,wz,ww/2,wd/2,wh+0.55);
+  for(let n=0;n<3;n++)P.box(wx+(r()-0.5)*ww*0.6,0.55+wh,wz+(r()-0.5)*wd*0.7,2,1,2,0x9aa1aa);
+  const doors=Math.floor(wd/9);
+  for(let n=0;n<doors;n++)P.box(wx-sx*(ww/2+0.06),0.2,wz-wd/2+(n+0.5)*wd/doors,0.12,4.4,4.2,0x50565e);
+  B.box(wx,0.2,az,aw,7,8,0xd9d4c7,true);P.box(wx,7.2,az,aw+0.3,0.4,8.3,0x9a958a);solid(k,wx,az,aw/2,4,7.6);
+  if(r()<0.5){const x=wx+sx*(ww/2-3),z=wz+wd/2-3,H=16+r()*8;  // chimney with red bands
+    P.box(x,0.2,z,1.8,H,1.8,0xb8b2a8);P.box(x,H-2.8,z,1.9,1.2,1.9,0xc0392b);P.box(x,H-6,z,1.9,1.2,1.9,0xc0392b);solid(k,x,z,0.9,0.9,H+0.2);}
+  // shipping containers stacked 1-3 high on the other side
+  for(let c=0;c<4;c++)for(let row=0;row<7;row++){if(r()<0.2)continue;
+    const x=-sx*(26.5-c*3.1),z=-21+row*7,n=1+(r()*3|0);
+    for(let s=0;s<n;s++)P.box(x,0.2+s*2.6,z,2.44,2.6,6.1,pick(CONT_COLS,r));solid(k,x,z,1.22,3.05,0.2+n*2.6);}
+  if(r()<0.7){const zs=r()<0.5?-1:1;  // two silos
+    for(const z of [zs*21,zs*15.5]){const x=-sx*11;
+      P.box(x,0.2,z,4.5,10,4.5,0xd5d8dc);for(const y of [3,6.5])P.box(x,0.2+y,z,4.6,0.35,4.6,0xaab0b7);P.box(x,10.2,z,3,0.6,3,0xaab0b7);solid(k,x,z,2.25,2.25,10.8);}}
+}
 function meshOf(gb,mat,cast){if(!gb.i.length)return null;const m=new THREE.Mesh(gb.build(),mat);m.castShadow=cast;m.receiveShadow=true;return m;}
 function makeChunk(cx,cz){
   const key=cx+','+cz,r=rng(hash2(cx,cz)),ox=(cx+0.5)*CH,oz=(cz+0.5)*CH;
-  const k={B:new GB(),P:new GB(),G:new GB(),boxes:[],ox,oz,r,type:'city'},P=k.P;
+  const k={B:new GB(),P:new GB(),G:new GB(),boxes:[],cars:[],ox,oz,r,type:'city'},P=k.P;
   P.box(0,0,0,LOT*2,0.2,LOT*2,0xb9b2a5);
   P.box(0,0,LOT-0.15,LOT*2,0.24,0.3,0x8f897e);P.box(0,0,-LOT+0.15,LOT*2,0.24,0.3,0x8f897e);
   P.box(LOT-0.15,0,0,0.3,0.24,LOT*2,0x8f897e);P.box(-LOT+0.15,0,0,0.3,0.24,LOT*2,0x8f897e);
   const custom=CUSTOM[key];
+  const dist=districtAt(cx,cz);
   if(custom){k.type='custom';custom(k);}
-  else if(r()<0.13){k.type='park';park(k);}
+  else if(dist!=='industrial'&&r()<(dist==='residential'?0.1:0.13)){k.type='park';park(k);}
+  else if(dist==='residential'){k.type='residential';residential(k);}
+  else if(dist==='industrial'){k.type='industrial';industrial(k);}
   else city(k,1+3.2*Math.exp(-Math.hypot(ox,oz)/240));
   for(const sx of [-1,1])for(const sz of [-1,1])lamp(k,sx*(LOT-1.2),sz*(LOT-1.2));
   const grp=new THREE.Group();grp.position.set(ox,0,oz);
   const meshes=[meshOf(k.B,facadeMat,true),meshOf(P,propMat,true),meshOf(k.G,glowMat,false)].filter(Boolean);
   meshes.forEach(m=>grp.add(m));scene.add(grp);
   const ch={key,cx,cz,grp,meshes,boxes:k.boxes,parked:[],type:k.type};
+  for(const c of k.cars){c.src=ch;ch.parked.push(c);}
   if(!custom) for(const [sx,sz,dx,dz] of [[1,0,0,1],[-1,0,0,-1],[0,1,-1,0],[0,-1,1,0]]){
     if(r()>0.4)continue;const al=(r()-0.5)*(CH-30),c=makeCar(pick(CAR_COLS,r));
     placeCar(c,ox+sx*35+(sx?0:al),oz+sz*35+(sz?0:al),Math.atan2(-dx,-dz));c.src=ch;ch.parked.push(c);}
