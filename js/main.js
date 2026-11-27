@@ -19,6 +19,6 @@ function loop(now){
   ground.position.set(Math.round(F.x/CH)*CH,0,Math.round(F.z/CH)*CH);
   sky.position.copy(camera.position);stars.position.copy(camera.position);
   if(frame%4===0)drawMap(F);if(frame%10===0)updateHud();
-  renderer.render(scene,camera);
+  renderFrame();
 }
 requestAnimationFrame(loop);
