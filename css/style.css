@@ -1,0 +1,33 @@
+/* VOICE: warm, playful toy-town; a sandbox to wander, not a menu
+   IDEA: a pocket diorama city that keeps building itself as you explore
+   PICTURE: the live 3D town, full screen, golden hour into night
+   COLOUR and TYPE: dusk orange #ff7a45, deep ink #14171f, cream #fff6ea; Rubik
+   LAYOUT: full-bleed canvas, HUD chips top-left, round minimap bottom-right */
+:root{--ink:#14171f;--cream:#fff6ea;--acc:#ff7a45;--teal:#19b3a6}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;height:100%;overflow:hidden;background:#0b1230;font:16px/1.5 Rubik,system-ui,sans-serif;color:var(--cream)}
+#stage canvas{position:fixed;inset:0;display:block;touch-action:none;outline:none}
+.chip{background:rgba(20,23,31,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border-radius:12px;padding:6px 12px;font-weight:600;font-size:14px;color:var(--cream);white-space:nowrap}
+#hud{position:fixed;top:12px;left:12px;right:12px;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none}
+.brand{background:var(--acc);color:var(--ink);font-weight:800}
+#stream{position:fixed;bottom:16px;left:12px;font-size:13px;font-weight:400;pointer-events:none}
+#map{position:fixed;right:14px;bottom:14px;width:150px;height:150px;border-radius:50%;border:3px solid rgba(255,246,234,.9);box-shadow:0 6px 24px rgba(0,0,0,.35);pointer-events:none}
+#hint{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);font-size:16px;display:none;pointer-events:none}
+#intro{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:radial-gradient(ellipse at center,rgba(11,18,48,.2),rgba(11,18,48,.72));overflow:auto}
+#intro.hidden{display:none}
+.card{width:min(560px,100%);background:var(--cream);color:var(--ink);border-radius:22px;padding:clamp(22px,4vw,36px);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.card h1{font-size:clamp(34px,6vw,48px);line-height:1.05;margin:0 0 8px;font-weight:800;text-wrap:balance}
+.card h1 span{color:var(--acc)}
+.card p{margin:0 0 18px;font-size:17px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;margin:0 0 22px;font-size:15px;align-items:center}
+kbd{display:inline-block;background:var(--ink);color:var(--cream);border-radius:6px;padding:1px 8px;font:600 13px/1.6 Rubik,sans-serif;margin-right:3px}
+button.go{appearance:none;border:0;background:var(--acc);color:var(--ink);font:800 17px Rubik,sans-serif;padding:14px 22px;border-radius:14px;cursor:pointer;min-height:48px;width:100%}
+button.go:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.note{font-size:13px;opacity:.72;margin:12px 0 0}
+.touchonly{display:none}.coarse .touchonly{display:grid}.coarse .deskonly{display:none}
+#touch{display:none}.coarse.playing #touch{display:block}
+#joy{position:fixed;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:2px solid rgba(255,255,255,.55);background:rgba(20,23,31,.25);display:none;pointer-events:none}
+#knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px;border-radius:50%;background:rgba(255,246,234,.85)}
+.tbtn{position:fixed;right:20px;width:68px;height:68px;border-radius:50%;border:0;font:800 15px Rubik,sans-serif;background:rgba(20,23,31,.72);color:var(--cream);touch-action:none;user-select:none;-webkit-user-select:none}
+#btnCar{bottom:146px;background:var(--acc);color:var(--ink)}#btnRun{bottom:226px}
+@media(max-width:600px){#map{width:112px;height:112px}#stream{display:none}.keys{font-size:14px}}
