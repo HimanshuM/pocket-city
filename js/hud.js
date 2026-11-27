@@ -12,6 +12,10 @@ function drawMap(F){
   mg.fillStyle='#19b3a6';for(const c of freeCars){mg.beginPath();mg.arc(c.obj.position.x,c.obj.position.z,4,0,7);mg.fill();}
   const h=player.car?player.car.h:player.h;mg.translate(F.x,F.z);mg.rotate(-h);
   mg.fillStyle='#ff7a45';mg.strokeStyle='#14171f';mg.lineWidth=1.5;mg.beginPath();mg.moveTo(0,-9);mg.lineTo(6.5,7);mg.lineTo(0,3.5);mg.lineTo(-6.5,7);mg.closePath();mg.fill();mg.stroke();
+  // N marker on the rim, pointing to world north (-z); it travels around the edge as the map turns
+  const nr=W*0.4,nx=W/2+Math.sin(cam.yaw)*nr,ny=W/2-Math.cos(cam.yaw)*nr;
+  mg.setTransform(1,0,0,1,0,0);mg.fillStyle='#14171f';mg.beginPath();mg.arc(nx,ny,W*0.075,0,7);mg.fill();
+  mg.fillStyle='#fff6ea';mg.font=`800 ${Math.round(W*0.095)}px Rubik,sans-serif`;mg.textAlign='center';mg.textBaseline='middle';mg.fillText('N',nx,ny+W*0.005);
 }
 function updateHud(){
   const hrs=dayT*24,hh=Math.floor(hrs),mm=Math.floor((hrs-hh)*60);
