@@ -29,5 +29,5 @@ button.go:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 #joy{position:fixed;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:2px solid rgba(255,255,255,.55);background:rgba(20,23,31,.25);display:none;pointer-events:none}
 #knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px;border-radius:50%;background:rgba(255,246,234,.85)}
 .tbtn{position:fixed;right:20px;width:68px;height:68px;border-radius:50%;border:0;font:800 15px Rubik,sans-serif;background:rgba(20,23,31,.72);color:var(--cream);touch-action:none;user-select:none;-webkit-user-select:none}
-#btnCar{bottom:146px;background:var(--acc);color:var(--ink)}#btnRun{bottom:226px}
+#btnCar{bottom:146px;background:var(--acc);color:var(--ink)}#btnRun{bottom:226px}#btnHorn{bottom:306px}
 @media(max-width:600px){#map{width:112px;height:112px}#stream{display:none}.keys{font-size:14px}}

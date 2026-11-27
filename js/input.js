@@ -19,14 +19,16 @@ addEventListener('pointermove',e=>{
 const endP=e=>{if(e.pointerId===joy.id){joy.id=null;joy.x=joy.y=0;joyEl.style.display='none';}if(e.pointerId===lk.id)lk.id=null;};
 addEventListener('pointerup',endP);addEventListener('pointercancel',endP);
 $('btnCar').addEventListener('pointerdown',e=>{e.preventDefault();interact();});
+let hornHold=false;const hornBtn=$('btnHorn');hornBtn.addEventListener('pointerdown',e=>{e.preventDefault();initAudio();hornHold=true;});
+['pointerup','pointercancel','pointerleave'].forEach(t=>hornBtn.addEventListener(t,()=>{hornHold=false;}));
 const runBtn=$('btnRun');runBtn.addEventListener('pointerdown',e=>{e.preventDefault();hold=true;});
 ['pointerup','pointercancel','pointerleave'].forEach(t=>runBtn.addEventListener(t,()=>{hold=false;}));
 function readInput(){
-  if(!playing())return{x:0,y:0,run:false,jump:false};
+  if(!playing())return{x:0,y:0,run:false,jump:false,horn:false};
   let x=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0),y=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
   if(joy.id!==null){x+=joy.x;y-=joy.y;}
   const touchRun=!player.car&&(hold||Math.hypot(joy.x,joy.y)>0.95);
-  return{x:clamp(x,-1,1),y:clamp(y,-1,1),run:!!(keys.ShiftLeft||keys.ShiftRight||touchRun),jump:!!(keys.Space||(player.car&&hold))};
+  return{x:clamp(x,-1,1),y:clamp(y,-1,1),run:!!(keys.ShiftLeft||keys.ShiftRight||touchRun),jump:!!(keys.Space||(player.car&&hold)),horn:!!(keys.Digit2||keys.Numpad2||hornHold)};
 }
 function showIntro(show){$('intro').classList.toggle('hidden',!show);document.body.classList.toggle('playing',!show);
   if(show&&document.pointerLockElement)document.exitPointerLock();for(const k in keys)keys[k]=false;}

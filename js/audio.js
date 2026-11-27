@@ -29,6 +29,7 @@ document.addEventListener('visibilitychange',()=>{if(!actx)return;if(document.hi
 const GEARS=[0,8,15,22,29,40];  // m/s where each of the 5 gears starts
 function updateAudio(dt,inp){
   if(!actx)return;const c=player.car,t=actx.currentTime;
+  updateHorn(!!(c&&playing()&&inp.horn));
   if(!c||!playing()){eng.g.gain.setTargetAtTime(0,t,0.15);screech.g.gain.setTargetAtTime(0,t,0.05);return;}
   // gears are spread over each car's own top speed; pitch makes vans deeper and sports cars higher
   const sp=Math.abs(c.v)*34/c.T.top,thr=Math.abs(inp.y);let gi=0;while(gi<4&&sp>GEARS[gi+1])gi++;
@@ -53,4 +54,30 @@ function carThud(s){
   og.gain.setValueAtTime(0.0001,t);og.gain.exponentialRampToValueAtTime(0.15+0.6*s,t+0.01);og.gain.exponentialRampToValueAtTime(0.0001,t+0.3);
   src.connect(lp);lp.connect(g);g.connect(master);o.connect(og);og.connect(master);
   src.start(t);src.stop(t+0.4);o.start(t);o.stop(t+0.35);
+}
+
+/* horns: a twin-tone horn (two soft tones a major third apart, G4 + B4) through a gentle low-pass filter, so it
+   stays easy on earphones. pitch scales it per car type (vans lower, hatchbacks and sports cars higher). */
+let hornWave=null,myHorn=null;
+function hornVoice(pitch){
+  if(!hornWave){const h=new Float32Array([0,1,0.5,0.32,0.22,0.14,0.09,0.05]);hornWave=actx.createPeriodicWave(h,new Float32Array(h.length));}
+  const g=actx.createGain(),lp=actx.createBiquadFilter(),pan=actx.createStereoPanner(),os=[392,494].map(f=>{const o=actx.createOscillator();o.setPeriodicWave(hornWave);o.frequency.value=f*pitch;o.connect(lp);o.start();return o;});
+  lp.type='lowpass';lp.frequency.value=1800;lp.Q.value=0.7;g.gain.value=0;lp.connect(g);g.connect(pan);pan.connect(master);
+  return {g,pan,os};
+}
+// a traffic car honks at world position p: quieter with distance, and from the side it's on; double = two short toots
+const _hr=new THREE.Vector3();
+function carHorn(p,pitch,double){
+  if(!actx)return;const dx=p.x-camera.position.x,dz=p.z-camera.position.z,d=Math.hypot(dx,dz),vol=0.14*Math.pow(clamp(1-d/90,0,1),2);
+  if(vol<0.004)return;
+  _hr.setFromMatrixColumn(camera.matrixWorld,0);const v=hornVoice(pitch),t=actx.currentTime;v.pan.pan.value=clamp((dx*_hr.x+dz*_hr.z)/Math.max(d,1),-0.8,0.8);
+  const toot=(t0,len)=>{v.g.gain.setValueAtTime(0,t0);v.g.gain.linearRampToValueAtTime(vol,t0+0.015);v.g.gain.setValueAtTime(vol,t0+len);v.g.gain.linearRampToValueAtTime(0,t0+len+0.05);};
+  toot(t,double?0.16:0.4);if(double)toot(t+0.28,0.22);
+  const end=t+(double?0.6:0.5);v.os.forEach(o=>o.stop(end));
+}
+// your horn: sounds for as long as you hold it (key 2, or the Horn button on touch screens)
+function updateHorn(on){
+  if(!actx)return;const t=actx.currentTime;
+  if(on&&!myHorn)myHorn=hornVoice(player.car.T.pitch);
+  if(myHorn){myHorn.g.gain.setTargetAtTime(on?0.11:0,t,0.012);if(!on){const h=myHorn;myHorn=null;h.os.forEach(o=>o.stop(t+0.1));}}
 }

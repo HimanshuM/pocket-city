@@ -170,6 +170,9 @@ function updateTraffic(dt,F){
         const h=firstHit(c,near);if(h[0]>8||(h[1]&&typeof h[1]==='object')){[gap,blocker,hitObj]=h;break;}
         if(turning)[c.nd,c.E,c.P,c.X,c.len]=old;else[c.nd,c.next]=old;}}
     c.bk=!blocker?null:typeof blocker==='string'?blocker:'car';  // what's holding us up: 'you', 'parked' or 'car'
+    // impatient drivers: held up by you or a car left in the road, honk after a few seconds, then every few seconds
+    if((c.bk==='you'||c.bk==='parked')&&c.v<0.5&&gap<6){c.honk=(c.honk??2.5+R0()*2)-dt;if(c.honk<=0){carHorn(q,c.T.pitch,R0()<0.4);c.honk=3+R0()*5;}}
+    else c.honk=null;
     let target=gap<1.5?0:gap<8?c.cruise*0.35:c.cruise;
     // a car coming toward us in our lane (one that's overtaking): stop well short so it has room to pull back in
     const o2=typeof blocker==='object'&&blocker;if(o2&&o2.lo>0.5&&Math.cos(o2.h-c.h)<-0.5&&gap<14)target=gap<10?0:c.cruise*0.3;
