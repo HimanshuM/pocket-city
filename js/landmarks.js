@@ -40,3 +40,29 @@ CUSTOM['-1,0']=k=>{
   for(const x of [-24,-14,-4,6])for(const s of [-1,1])tree(k,x,s*26,1);
   for(const s of [-1,1])tree(k,-26,s*12,1);
 };
+
+// Stadium: pitch and track, tiered stands with an entrance at each end (walk or drive in), floodlights
+CUSTOM['3,-2']=k=>{
+  const {P,G}=k,WALL=0xcfc9bf,SEAT=[0x3f6fd9,0x2f5bb8],LINE=0xf4f4f0;
+  P.box(0,0.2,0,62,0.04,58,0x9a958c);P.box(0,0.24,0,44,0.04,32,0xb5553f);  // concourse and running track
+  for(let i=0;i<9;i++)P.box(-16+i*4,0.28,0,4,0.04,24,i%2?0x5aa848:0x4f9a3f);  // striped pitch, 36 x 24
+  P.box(0,0.32,0,0.15,0.02,24,LINE);P.box(0,0.32,-3,6,0.02,0.15,LINE);P.box(0,0.32,3,6,0.02,0.15,LINE);P.box(-3,0.32,0,0.15,0.02,6,LINE);P.box(3,0.32,0,0.15,0.02,6,LINE);
+  for(const s of [-1,1]){
+    P.box(0,0.32,s*12,36,0.02,0.15,LINE);P.box(s*18,0.32,0,0.15,0.02,24,LINE);  // touchlines, goal lines
+    P.box(s*15,0.32,-5,6,0.02,0.15,LINE);P.box(s*15,0.32,5,6,0.02,0.15,LINE);P.box(s*12,0.32,0,0.15,0.02,10,LINE);  // penalty box
+    for(const z of [-3,3]){P.box(s*18.2,0.32,z,0.15,2.4,0.15,LINE);solid(k,s*18.2,z,0.1,0.1,2.7);}
+    P.box(s*18.2,2.72,0,0.15,0.15,6.15,LINE);  // goal
+  }
+  // five tiers of seats, each step higher; the long sides (z) run the full width, the ends (x) leave a 7 m entrance
+  for(let t=0;t<5;t++){const h=1.2+t*1.5,c=SEAT[t%2],L=12.5+t*2.2;
+    for(const s of [-1,1]){P.box(0,0.2,s*(17.1+t*2.2),2*(23.6+t*1.6),h,2.2,c);
+      for(const e of [-1,1])P.box(s*(22.8+t*1.6),0.2,e*(3.5+L/2),1.6,h,L,c);}}
+  for(const s of [-1,1]){
+    P.box(0,0.2,s*27.7,61,9.5,1,WALL);solid(k,0,s*22.1,31,6.1,9.7);
+    for(const e of [-1,1]){P.box(s*30.5,0.2,e*15.85,1,9.5,24.7,WALL);solid(k,s*26.5,e*15.85,4.5,12.35,9.7);}
+    P.box(s*30.5,6.2,0,1,3.5,7,WALL);G.box(s*31.05,7,0,0.1,1.6,5,0x9fd4ff);  // entrance with a glowing sign
+    for(const e of [-1,1]){const x=s*31.5,z=e*29.2;  // floodlight towers
+      P.box(x,0.2,z,0.8,26,0.8,0x8a9098);P.box(x,26.2,z,4,0.6,4,0x5a6068);G.box(x,25.9,z,3.6,0.3,3.6,0xffffff);solid(k,x,z,0.4,0.4,26.8);}
+  }
+  P.box(-30.5,9.7,0,1,6,14,0x2b2d33);G.box(-29.95,10.4,0,0.1,4.4,12.4,0x9fd4ff);  // scoreboard above the west entrance
+};
