@@ -23,7 +23,7 @@ const starMat = new THREE.PointsMaterial({color:0xffffff,size:1.7,sizeAttenuatio
 {const sr=rng(5),sp=[];for(let i=0;i<700;i++){const y=0.08+sr()*0.92,a=sr()*Math.PI*2,q=Math.sqrt(1-y*y);sp.push(Math.cos(a)*q*450,y*450,Math.sin(a)*q*450);}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));var stars=new THREE.Points(g,starMat);stars.renderOrder=-1;scene.add(stars);}
 
-/* speed blur: above ~65 km/h the frame is drawn into an off-screen image first, then onto the screen with a
+/* speed blur: above ~78 km/h the frame is drawn into an off-screen image first, then onto the screen with a
    20-sample zoom blur: pixels smear toward the horizon point ahead, everywhere except a small zone around
    your own car. Below that speed the frame goes straight to the screen, so the effect costs nothing then. */
 const blurRT=renderer.capabilities.isWebGL2?new THREE.WebGLMultisampleRenderTarget(1,1):new THREE.WebGLRenderTarget(1,1);
@@ -41,8 +41,9 @@ void main(){vec2 d=vUv-vec2(0.5,0.56);float r=max(length(d),1e-4);
 const blurScene=new THREE.Scene(),blurCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1),_bs=new THREE.Vector2(),_cv=new THREE.Vector3();
 {const q=new THREE.Mesh(new THREE.PlaneGeometry(2,2),blurMat);q.frustumCulled=false;blurScene.add(q);}
 function renderFrame(){
-  // builds from 65 km/h, with an extra notch above 100 km/h (27.8 m/s)
-  const c=player.car,sp=c?Math.hypot(c.v,c.vl):0,amt=0.12*clamp((sp-18)/16,0,1)+0.07*clamp((sp-27.8)/6.2,0,1);
+  // builds from 78 km/h (21.8 m/s), with an extra notch above 121 km/h (33.6 m/s); full blur only at the
+  // sports car's top speed (148 km/h), so slow cars like the van get very little
+  const c=player.car,sp=c?Math.hypot(c.v,c.vl):0,amt=0.12*clamp((sp-21.8)/19.3,0,1)+0.07*clamp((sp-33.6)/7.5,0,1);
   if(amt<0.002){renderer.render(scene,camera);return;}
   renderer.getDrawingBufferSize(_bs);if(blurRT.width!==_bs.x||blurRT.height!==_bs.y)blurRT.setSize(_bs.x,_bs.y);
   renderer.setRenderTarget(blurRT);renderer.render(scene,camera);renderer.setRenderTarget(null);
