@@ -35,7 +35,7 @@ function drive(dt,inp){
   pos.x+=(fx*c.v+rx*c.vl)*dt;pos.z+=(fz*c.v+rz*c.vl)*dt;
   const [hx,hz]=carCollide(c);
   if(hx||hz){const n=Math.hypot(hx,hz),nx=hx/n,nz=hz/n;Vx=fx*c.v+rx*c.vl;Vz=fz*c.v+rz*c.vl;const vn=Vx*nx+Vz*nz;
-    if(vn<-2){Vx-=nx*vn*1.25;Vz-=nz*vn*1.25;cam.shake=Math.min(1,-vn/15);}  // hit: bounce off a little
+    if(vn<-2){Vx-=nx*vn*1.25;Vz-=nz*vn*1.25;cam.shake=Math.min(1,-vn/15);carThud(cam.shake);}  // hit: bounce off a little
     else{if(vn<0){Vx-=nx*vn;Vz-=nz*vn;}Vx*=0.96;Vz*=0.96;}  // scrape: slide along it
     c.v=Vx*fx+Vz*fz;c.vl=Vx*rx+Vz*rz;}
   layTyreMarks(c,Math.abs(c.vl)>2.5||(hb&&sp>6));
@@ -56,7 +56,7 @@ function interact(){
       const blocked=gatherBoxes(t.x,t.z).some(b=>t.x>b[0]-0.4&&t.x<b[2]+0.4&&t.z>b[1]-0.4&&t.z<b[3]+0.4);
       if(!blocked||side===1){p.x=t.x;p.z=t.z;break;}}
     c.v=c.vl=0;c.steer=0;c.sy=c.svy=c.pa=c.pw=0;c.rig.position.y=0;c.rig.rotation.set(0,0,0);c.src='free';freeCars.push(c);scene.add(headlight,headlight.target);headlight.intensity=0;
-    p.car=null;p.h=c.h;p.y=groundY(p.x,p.z);p.man.g.visible=true;p.man.g.position.set(p.x,p.y,p.z);return;}
+    carThud(0.12);p.car=null;p.h=c.h;p.y=groundY(p.x,p.z);p.man.g.visible=true;p.man.g.position.set(p.x,p.y,p.z);return;}
   let best=null,bd=1.8;for(const c of nearCars(p.x,p.z,7)){const d=obbDist(p.x,p.z,c);if(d<bd){bd=d;best=c;}}
-  if(!best)return;detach(best);p.car=best;best.obj.add(headlight,headlight.target);p.man.g.visible=false;cam.lastLook=0;
+  if(!best)return;carThud(0.12);detach(best);p.car=best;best.obj.add(headlight,headlight.target);p.man.g.visible=false;cam.lastLook=0;
 }

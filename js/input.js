@@ -3,14 +3,14 @@ const keys={};let started=false,dragging=false,hold=false;
 const playing=()=>started&&$('intro').classList.contains('hidden');
 const PREVENT=new Set(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight']);
 addEventListener('keydown',e=>{if(PREVENT.has(e.code))e.preventDefault();keys[e.code]=true;if(e.repeat)return;
-  if(e.code==='KeyE')interact();if(e.code==='KeyG'&&playing()){hq=!hq;applyQuality();}if(e.code==='KeyH'&&started)showIntro(!playing());});
+  if(e.code==='KeyE')interact();if(e.code==='KeyG'&&playing()){hq=!hq;applyQuality();}if(e.code==='KeyH'&&started)showIntro(!playing());if(e.code==='KeyM')setMuted(!muted);initAudio();});
 addEventListener('keyup',e=>{keys[e.code]=false;});
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false;hold=false;});
 canvas.addEventListener('mousedown',()=>{dragging=true;if(playing()&&!coarse&&document.pointerLockElement!==canvas){try{const r=canvas.requestPointerLock();if(r&&r.catch)r.catch(()=>{});}catch(err){}}});
 addEventListener('mouseup',()=>{dragging=false;});
 addEventListener('mousemove',e=>{if(!playing())return;if(document.pointerLockElement===canvas||dragging)look(e.movementX,e.movementY);});
 const joy={id:null,x0:0,y0:0,x:0,y:0},lk={id:null,x:0,y:0},joyEl=$('joy'),knob=$('knob');
-canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'||!playing())return;
+canvas.addEventListener('pointerdown',e=>{initAudio();if(e.pointerType==='mouse'||!playing())return;
   if(e.clientX<innerWidth*0.45&&joy.id===null){Object.assign(joy,{id:e.pointerId,x0:e.clientX,y0:e.clientY,x:0,y:0});joyEl.style.display='block';joyEl.style.left=e.clientX+'px';joyEl.style.top=e.clientY+'px';knob.style.transform='';}
   else if(lk.id===null)Object.assign(lk,{id:e.pointerId,x:e.clientX,y:e.clientY});});
 addEventListener('pointermove',e=>{
@@ -30,7 +30,7 @@ function readInput(){
 }
 function showIntro(show){$('intro').classList.toggle('hidden',!show);document.body.classList.toggle('playing',!show);
   if(show&&document.pointerLockElement)document.exitPointerLock();for(const k in keys)keys[k]=false;}
-$('go').addEventListener('click',()=>{started=true;$('go').textContent='Back to the city';showIntro(false);
+$('go').addEventListener('click',()=>{initAudio();started=true;$('go').textContent='Back to the city';showIntro(false);
   if(!coarse){try{const r=canvas.requestPointerLock();if(r&&r.catch)r.catch(()=>{});}catch(err){}}});
 let hq=!coarse;
 function applyQuality(){renderer.setPixelRatio(Math.min(devicePixelRatio,hq?1.5:1));renderer.setSize(innerWidth,innerHeight);
