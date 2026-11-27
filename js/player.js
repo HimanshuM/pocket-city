@@ -20,17 +20,23 @@ function carCollide(c){
     const dx=t.x-bx,dz=t.z-bz;pos.x+=dx;pos.z+=dz;tx+=dx;tz+=dz;}
   return [tx,tz];}
 function drive(dt,inp){
-  const c=player.car,th=inp.y,st=-inp.x;
+  const c=player.car,th=inp.y,st=-inp.x,v0=c.v;
   if(th>0)c.v+=(c.v<0?24:12)*th*dt;else if(th<0)c.v-=(c.v>0.5?26:7)*(-th)*dt;else c.v-=c.v*0.5*dt;
   if(inp.jump)c.v*=Math.exp(-2.2*dt);
   c.v-=c.v*Math.abs(c.v)*0.006*dt;c.v=clamp(c.v,-9,34);
-  c.steer+=(st-c.steer)*(1-Math.exp(-dt*8));
+  c.steer+=(st-c.steer)*(1-Math.exp(-dt*8));c.wsteer=c.steer*0.55;
   const sp=Math.abs(c.v),turn=c.steer*1.9*Math.min(1,sp/6)*(1-0.5*Math.min(1,sp/34))*Math.sign(c.v)*(inp.jump?1.5:1);
   c.h+=turn*dt;const fx=-Math.sin(c.h),fz=-Math.cos(c.h),pos=c.obj.position;
   pos.x+=fx*c.v*dt;pos.z+=fz*c.v*dt;
   const [hx,hz]=carCollide(c);
   if(hx||hz){const n=Math.hypot(hx,hz),into=(fx*hx+fz*hz)/n*c.v;if(into<-2){c.v*=-0.25;cam.shake=Math.min(1,-into/15);}else c.v*=0.96;}
-  pos.y+=(groundY(pos.x,pos.z)-pos.y)*(1-Math.exp(-dt*12));c.obj.rotation.y=c.h;
+  // suspension: the wheels follow the ground at once and the body lags on springs, so kerbs make it bob;
+  // the nose lifts when you accelerate and dips when you brake, and the body leans in turns
+  const g=groundY(pos.x,pos.z);c.sy-=g-pos.y;pos.y=g;c.obj.rotation.y=c.h;
+  c.svy+=(-160*c.sy-10*c.svy)*dt;c.sy=clamp(c.sy+c.svy*dt,-0.25,0.25);
+  const pitch=clamp((c.v-v0)/Math.max(dt,1e-4)*0.004,-0.06,0.045);
+  c.pw+=(-90*(c.pa-pitch)-9*c.pw)*dt;c.pa+=c.pw*dt;
+  c.rig.position.y=c.sy;c.rig.rotation.x=c.pa;
   c.rig.rotation.z+=(clamp(turn*c.v*0.01,-0.07,0.07)-c.rig.rotation.z)*(1-Math.exp(-dt*6));
   player.x=pos.x;player.z=pos.z;player.y=pos.y;
 }
@@ -40,7 +46,7 @@ function interact(){
     for(const side of [-1,1]){const t={x:pos.x+side*co*2.2,z:pos.z-side*s*2.2};
       const blocked=gatherBoxes(t.x,t.z).some(b=>t.x>b[0]-0.4&&t.x<b[2]+0.4&&t.z>b[1]-0.4&&t.z<b[3]+0.4);
       if(!blocked||side===1){p.x=t.x;p.z=t.z;break;}}
-    c.v=0;c.steer=0;c.rig.rotation.z=0;c.src='free';freeCars.push(c);scene.add(headlight,headlight.target);headlight.intensity=0;
+    c.v=0;c.steer=0;c.sy=c.svy=c.pa=c.pw=0;c.rig.position.y=0;c.rig.rotation.set(0,0,0);c.src='free';freeCars.push(c);scene.add(headlight,headlight.target);headlight.intensity=0;
     p.car=null;p.h=c.h;p.y=groundY(p.x,p.z);p.man.g.visible=true;p.man.g.position.set(p.x,p.y,p.z);return;}
   let best=null,bd=1.8;for(const c of nearCars(p.x,p.z,7)){const d=obbDist(p.x,p.z,c);if(d<bd){bd=d;best=c;}}
   if(!best)return;detach(best);p.car=best;best.obj.add(headlight,headlight.target);p.man.g.visible=false;cam.lastLook=0;

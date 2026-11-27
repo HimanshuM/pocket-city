@@ -15,7 +15,7 @@ function loop(now){
   const inp=readInput();
   if(player.car)drive(dt,inp);else walk(dt,inp);
   const F=focus();
-  updateStreaming(F);updateTraffic(dt,F);updatePeds(dt,F);updateSky(dt,F);updateCamera(dt,F,now);updateWater(dt,F);
+  updateStreaming(F);updateTraffic(dt,F);updateWheels(dt,F);updatePeds(dt,F);updateSky(dt,F);updateCamera(dt,F,now);updateWater(dt,F);
   ground.position.set(Math.round(F.x/CH)*CH,0,Math.round(F.z/CH)*CH);
   sky.position.copy(camera.position);stars.position.copy(camera.position);
   if(frame%4===0)drawMap(F);if(frame%10===0)updateHud();

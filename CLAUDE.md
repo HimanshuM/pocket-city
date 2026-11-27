@@ -101,6 +101,7 @@ When you change something visual or behavioural, verify it actually works. Don't
 
 **Cars the player can use:**
 - Any car can be entered: traffic, parked or "free". A car's `src` says which list owns it, and `detach()` removes it from that list.
+- **Car body springs** (player's car): the car object follows the ground and `rig` (the body) lags on springs. `sy/svy` is the vertical bounce and `pa/pw` the nose pitch from acceleration. `wsteer` is the front-wheel angle (player: from steering; traffic: from how fast it's turning).
 - A car the player leaves becomes a "free" car (teal dots on the minimap). Free cars are removed when more than 460 m away.
 
 **Materials:**
@@ -111,7 +112,7 @@ When you change something visual or behavioural, verify it actually works. Don't
 
 The game targets a modest PC and phones.
 - Keep roughly ≤ 500 draw calls. Each chunk is 3 meshes; merge static detail into the chunk's `GB` builders rather than adding separate meshes.
-- Each car is 2 meshes and each person is 5.
+- Each car is 2 meshes (body, lights) and each person is 5. All wheels in the city are one `InstancedMesh` (`wheels` in `js/cars.js`, placed each frame by `updateWheels`), so wheels cost 1 draw call in total. Use instancing like this for anything that repeats on every car or person.
 - Reuse shared materials and geometries instead of creating new ones.
 - No new real-time lights per object. Fake glow with emissive or basic materials.
 - `G` toggles shadows and pixel ratio. New expensive effects should respect that quality flag (`hq`).
