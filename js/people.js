@@ -15,7 +15,7 @@ const pathAt=s=>{const side=Math.floor(s/64)%4,t=s%64-32;return side===0?[t,-32]
 function spawnPed(p,F,init){
   const fcx=Math.floor(F.x/CH),fcz=Math.floor(F.z/CH);
   for(let tries=0;tries<12;tries++){
-    const cx=fcx+((R0()*5)|0)-2,cz=fcz+((R0()*5)|0)-2,ch=chunks.get(cx+','+cz);if(!ch)continue;
+    const cx=fcx+((R0()*5)|0)-2,cz=fcz+((R0()*5)|0)-2,ch=chunks.get(cx+','+cz);if(!ch||!ch.peds)continue;
     const s=R0()*256,[lx,lz]=pathAt(s),ox=(cx+0.5)*CH,oz=(cz+0.5)*CH;
     if(!init&&Math.hypot(ox+lx-F.x,oz+lz-F.z)<30)continue;
     Object.assign(p,{key:ch.key,ox,oz,s,dir:R0()<0.5?-1:1,base:1.1+R0()*0.6,offx:0,offz:0,panic:0,hy:0,vy:0,ok:true});p.man.g.visible=true;return;}

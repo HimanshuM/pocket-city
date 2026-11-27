@@ -2,7 +2,7 @@
 // Hand-built blocks override the generator. Add your own: CUSTOM['x,z'] = k => { ... }
 const CUSTOM={'0,0':townSquare};
 const chunks=new Map();
-const groundY=(x,z)=>{const lx=((x%CH)+CH)%CH-HALF,lz=((z%CH)+CH)%CH-HALF;return(Math.abs(lx)<LOT&&Math.abs(lz)<LOT)?0.2:0;};
+const groundY=(x,z)=>{if(z>COAST_Z)return coastY(x,z);const lx=((x%CH)+CH)%CH-HALF,lz=((z%CH)+CH)%CH-HALF;return(Math.abs(lx)<LOT&&Math.abs(lz)<LOT)?0.2:0;};
 function solid(k,lx,lz,hx,hz,h){k.boxes.push([k.ox+lx-hx,k.oz+lz-hz,k.ox+lx+hx,k.oz+lz+hz,h]);}
 function tree(k,lx,lz,s=1){const g=pick(GREENS,k.r);
   k.P.box(lx,0.2,lz,0.45*s,2.3*s,0.45*s,0x6b4a2f);k.P.box(lx,0.2+2*s,lz,2.6*s,1.9*s,2.6*s,g);k.P.box(lx,0.2+3.7*s,lz,1.7*s,1.3*s,1.7*s,shade(g,1.15));
@@ -56,6 +56,7 @@ function townSquare(k){
 /* districts: the map is split into irregular regions of roughly 4x4 blocks, each with its own kind of block */
 const DCELL=4;
 function districtAt(cx,cz){
+  if(cz>=COAST_CZ)return cz===COAST_CZ?'shore':'sea';
   if(Math.hypot(cx+0.5,cz+0.5)<2.6)return 'downtown';
   const gx=Math.floor(cx/DCELL),gz=Math.floor(cz/DCELL);let best=1e9,type='city';
   for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){  // nearest random centre point wins
@@ -124,23 +125,25 @@ function meshOf(gb,mat,cast){if(!gb.i.length)return null;const m=new THREE.Mesh(
 function makeChunk(cx,cz){
   const key=cx+','+cz,r=rng(hash2(cx,cz)),ox=(cx+0.5)*CH,oz=(cz+0.5)*CH;
   const k={B:new GB(),P:new GB(),G:new GB(),boxes:[],cars:[],ox,oz,r,type:'city'},P=k.P;
-  P.box(0,0,0,LOT*2,0.2,LOT*2,0xb9b2a5);
-  P.box(0,0,LOT-0.15,LOT*2,0.24,0.3,0x8f897e);P.box(0,0,-LOT+0.15,LOT*2,0.24,0.3,0x8f897e);
-  P.box(LOT-0.15,0,0,0.3,0.24,LOT*2,0x8f897e);P.box(-LOT+0.15,0,0,0.3,0.24,LOT*2,0x8f897e);
-  const custom=CUSTOM[key];
-  const dist=districtAt(cx,cz);
+  const custom=CUSTOM[key],dist=districtAt(cx,cz),coast=!custom&&(dist==='shore'||dist==='sea');
+  if(!coast){  // the raised lot and its curbs
+    P.box(0,0,0,LOT*2,0.2,LOT*2,0xb9b2a5);
+    P.box(0,0,LOT-0.15,LOT*2,0.24,0.3,0x8f897e);P.box(0,0,-LOT+0.15,LOT*2,0.24,0.3,0x8f897e);
+    P.box(LOT-0.15,0,0,0.3,0.24,LOT*2,0x8f897e);P.box(-LOT+0.15,0,0,0.3,0.24,LOT*2,0x8f897e);}
   if(custom){k.type='custom';custom(k);}
+  else if(dist==='shore')shore(k,cx);
+  else if(dist==='sea')k.type='sea';
   else if(dist!=='industrial'&&r()<(dist==='residential'?0.1:0.13)){k.type='park';park(k);}
   else if(dist==='residential'){k.type='residential';residential(k);}
   else if(dist==='industrial'){k.type='industrial';industrial(k);}
   else city(k,1+3.2*Math.exp(-Math.hypot(ox,oz)/240));
-  for(const sx of [-1,1])for(const sz of [-1,1])lamp(k,sx*(LOT-1.2),sz*(LOT-1.2));
+  if(!coast)for(const sx of [-1,1])for(const sz of [-1,1])lamp(k,sx*(LOT-1.2),sz*(LOT-1.2));
   const grp=new THREE.Group();grp.position.set(ox,0,oz);
   const meshes=[meshOf(k.B,facadeMat,true),meshOf(P,propMat,true),meshOf(k.G,glowMat,false)].filter(Boolean);
   meshes.forEach(m=>grp.add(m));scene.add(grp);
-  const ch={key,cx,cz,grp,meshes,boxes:k.boxes,parked:[],type:k.type};
+  const ch={key,cx,cz,grp,meshes,boxes:k.boxes,parked:[],type:k.type,peds:!coast};
   for(const c of k.cars){c.src=ch;ch.parked.push(c);}
-  if(!custom) for(const [sx,sz,dx,dz] of [[1,0,0,1],[-1,0,0,-1],[0,1,-1,0],[0,-1,1,0]]){
+  if(!custom&&!coast) for(const [sx,sz,dx,dz] of [[1,0,0,1],[-1,0,0,-1],[0,1,-1,0],[0,-1,1,0]]){
     if(r()>0.4)continue;const al=(r()-0.5)*(CH-30),c=makeCar(pick(CAR_COLS,r));
     placeCar(c,ox+sx*35+(sx?0:al),oz+sz*35+(sz?0:al),Math.atan2(-dx,-dz));c.src=ch;ch.parked.push(c);}
   chunks.set(key,ch);

@@ -26,7 +26,7 @@ function tPose(c){
     fx=2*u*(P.x-E.x)+2*t*(X.x-P.x);fz=2*u*(P.z-E.z)+2*t*(X.z-P.z);}
   c.h=Math.atan2(-fx,-fz);c.obj.position.set(x,0,z);c.obj.rotation.y=c.h;}
 function tStartTurn(c){
-  const [dx,dz]=c.d,node=[c.node[0]+dx,c.node[1]+dz],nd=pick([[dx,dz],[dx,dz],[-dz,dx],[dz,-dx]],R0),cx=node[0]*CH,cz=node[1]*CH;
+  const [dx,dz]=c.d,node=[c.node[0]+dx,c.node[1]+dz],nd=pick([[dx,dz],[dx,dz],[-dz,dx],[dz,-dx]].filter(o=>node[1]+o[1]<=COAST_CZ),R0),cx=node[0]*CH,cz=node[1]*CH;
   const E={x:cx-dz*3-dx*6,z:cz+dx*3-dz*6},X={x:cx-nd[1]*3+nd[0]*6,z:cz+nd[0]*3+nd[1]*6};
   const P=(nd[0]===dx&&nd[1]===dz)?{x:(E.x+X.x)/2,z:(E.z+X.z)/2}:{x:cx-dz*3-nd[1]*3,z:cz+dx*3+nd[0]*3};
   Object.assign(c,{mode:'turn',E,P,X,t:0,node,nd});
@@ -37,7 +37,7 @@ function spawnTraffic(c,F,init){
   for(let tries=0;tries<20;tries++){
     const node=[fx+((R0()*7)|0)-3,fz+((R0()*7)|0)-3],d=pick([[1,0],[-1,0],[0,1],[0,-1]],R0),s=R0()*(CH-12);
     const x=node[0]*CH-d[1]*3+d[0]*(6+s),z=node[1]*CH+d[0]*3+d[1]*(6+s),dist=Math.hypot(x-F.x,z-F.z);
-    if(dist<(init?25:80)||dist>R*CH)continue;
+    if(dist<(init?25:80)||dist>R*CH||Math.max(node[1],node[1]+d[1])>COAST_CZ)continue;  // no roads into the sea
     if(traffic.some(o=>o!==c&&Math.hypot(o.obj.position.x-x,o.obj.position.z-z)<12))continue;
     if(!c){c=makeCar(pick(CAR_COLS,R0));c.src='traffic';traffic.push(c);}
     Object.assign(c,{mode:'road',node,d,s,cruise:8+R0()*4,v:6,stuck:0,ignore:0});tPose(c);return;}
