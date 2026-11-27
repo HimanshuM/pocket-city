@@ -27,7 +27,7 @@ function makeGround(){
 const [facadeTex,facadeEm]=makeFacade();
 const facadeMat=new THREE.MeshLambertMaterial({map:facadeTex,emissiveMap:facadeEm,emissive:0xffffff,emissiveIntensity:0,vertexColors:true});
 const propMat=new THREE.MeshLambertMaterial({vertexColors:true});
-const glowMat=new THREE.MeshBasicMaterial({color:0x8a8270});
+const glowMat=new THREE.MeshBasicMaterial({color:0x8a8270,vertexColors:true});  // k.G boxes: white = normal lamp glow, other colours tint it
 const carLightMat=new THREE.MeshBasicMaterial({vertexColors:true});
 const groundTex=makeGround(); groundTex.repeat.set(10,10);
 const groundMat=new THREE.MeshPhongMaterial({map:groundTex,specular:0x111111,shininess:8});
