@@ -24,16 +24,17 @@ const starMat = new THREE.PointsMaterial({color:0xffffff,size:1.7,sizeAttenuatio
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));var stars=new THREE.Points(g,starMat);stars.renderOrder=-1;scene.add(stars);}
 
 /* speed blur: above ~65 km/h the frame is drawn into an off-screen image first, then onto the screen with a
-   zoom blur (pixels smeared toward the centre, more at the edges, none in the middle). Below that speed the
+   14-sample zoom blur (pixels smeared toward the centre, more at the edges, none in the middle). Below that speed the
    frame goes straight to the screen, so the effect costs nothing when you're not driving fast. */
 const blurRT=renderer.capabilities.isWebGL2?new THREE.WebGLMultisampleRenderTarget(1,1):new THREE.WebGLRenderTarget(1,1);
 const blurMat=new THREE.ShaderMaterial({uniforms:{tex:{value:blurRT.texture},amt:{value:0}},depthTest:false,depthWrite:false,
   vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.0,1.0);}',
-  fragmentShader:'uniform sampler2D tex;uniform float amt;varying vec2 vUv;void main(){vec2 d=vUv-0.5;float k=amt*smoothstep(0.12,0.75,length(d));vec4 c=vec4(0.0);for(int i=0;i<10;i++)c+=texture2D(tex,vUv-d*k*float(i)/9.0);gl_FragColor=c/10.0;}'});
+  fragmentShader:'uniform sampler2D tex;uniform float amt;varying vec2 vUv;void main(){vec2 d=vUv-0.5;float k=amt*smoothstep(0.12,0.75,length(d));vec4 c=vec4(0.0);for(int i=0;i<14;i++)c+=texture2D(tex,vUv-d*k*float(i)/13.0);gl_FragColor=c/14.0;}'});
 const blurScene=new THREE.Scene(),blurCam=new THREE.OrthographicCamera(-1,1,1,-1,0,1),_bs=new THREE.Vector2();
 {const q=new THREE.Mesh(new THREE.PlaneGeometry(2,2),blurMat);q.frustumCulled=false;blurScene.add(q);}
 function renderFrame(){
-  const c=player.car,amt=c?0.07*clamp((Math.hypot(c.v,c.vl)-18)/16,0,1):0;
+  // builds from 65 km/h, with an extra notch above 100 km/h (27.8 m/s)
+  const c=player.car,sp=c?Math.hypot(c.v,c.vl):0,amt=0.07*clamp((sp-18)/16,0,1)+0.035*clamp((sp-27.8)/6.2,0,1);
   if(amt<0.002){renderer.render(scene,camera);return;}
   renderer.getDrawingBufferSize(_bs);if(blurRT.width!==_bs.x||blurRT.height!==_bs.y)blurRT.setSize(_bs.x,_bs.y);
   renderer.setRenderTarget(blurRT);renderer.render(scene,camera);renderer.setRenderTarget(null);
