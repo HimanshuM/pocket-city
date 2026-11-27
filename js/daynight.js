@@ -13,8 +13,12 @@ function updateSky(dt,F){
   scene.fog.color.copy(u.hor.value);
   let dx=Math.cos(ang),dy=el,dz=0.4;
   u.sunDir.value.set(dx,dy,dz);u.glow.value.copy(C.sunD).lerp(C.sunDu,dusk).multiplyScalar(smooth(-0.12,0.05,el));
+  // the moon rises opposite the sun but stays low in the southern sky (at most ~25 degrees up), so its
+  // reflection on the sea stretches toward the horizon like a moonlit path instead of a blob below you
+  const hl=Math.hypot(Math.cos(ang),0.4),me=0.12+0.32*smooth(0,0.8,-el),mx=-Math.cos(ang)/hl*Math.cos(me),mz=0.4/hl*Math.cos(me),my=Math.sin(me);
+  u.moonDir.value.set(mx,my,mz);u.moonAmt.value=night;
   if(el>-0.05){sun.color.copy(C.sunD).lerp(C.sunDu,dusk);sun.intensity=0.62*smooth(-0.05,0.15,el);}
-  else{dx=-dx;dy=-dy;sun.color.copy(C.moon);sun.intensity=0.22*smooth(0.05,0.3,-el);}
+  else{dx=mx;dy=my;dz=mz;sun.color.copy(C.moon);sun.intensity=0.22*smooth(0.05,0.3,-el);}
   dy=Math.max(dy,0.1);const L=Math.hypot(dx,dy,dz);
   sun.position.set(F.x+dx/L*160,dy/L*160,F.z+dz/L*160);sun.target.position.set(F.x,0,F.z);
   hemi.intensity=0.34+0.08*day;hemi.color.copy(C.hN).lerp(C.hD,day);

@@ -73,4 +73,6 @@ groundMat.clippingPlanes=[new THREE.Plane(new THREE.Vector3(0,0,-1),COAST_Z)];
 function updateWater(dt,F){
   water.position.set(Math.round(F.x/CH)*CH,SEA_Y,COAST_Z+400);
   waterTex.offset.x+=dt*0.004;waterTex.offset.y+=dt*0.0025;
+  // the sea only shines with sunlight: a flat plane would turn the moon's reflection into a glowing blob
+  water.material.specular.setHex(0x9fc4d6).multiplyScalar(1-night);
 }
