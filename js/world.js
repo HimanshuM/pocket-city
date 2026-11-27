@@ -71,7 +71,7 @@ function residential(k){
       continue;}
     // each house faces its nearest street. In plot coordinates a points toward the street and b sideways.
     const fx=j?0:i,fz=j,ax=!!fz,at=(a,b)=>[px+fx*a+(ax?b:0),pz+fz*a+(ax?0:b)],dims=(la,ld)=>ax?[la,ld]:[ld,la];
-    const pbox=(a,b,y,la,h,ld,col)=>{const [x,z]=at(a,b),[sx,sz]=dims(la,ld);P.box(x,y,z,sx,h,sz,col);return [x,z,sx,sz];};
+    const pbox=(a,y,b,la,h,ld,col)=>{const [x,z]=at(a,b),[sx,sz]=dims(la,ld);P.box(x,y,z,sx,h,sz,col);return [x,z,sx,sz];};
     P.box(px,0.2,pz,pw-0.8,0.06,pw-0.8,pick(GREENS,r));
     const w=8+r()*3,d=7+r()*2,h=(r()<0.55?2:1)*3.5,rh=2+r()*1.2,col=pick(HOUSE_COLS,r),[hx,hz]=at(-2,0),[sx,sz]=dims(w,d);
     B.box(hx,0.2,hz,sx,h,sz,col,true);P.roof(hx,0.2+h,hz,sx+0.8,rh,sz+0.8,pick(ROOF_COLS,r),ax,col);solid(k,hx,hz,sx/2,sz/2,0.2+h+rh);
