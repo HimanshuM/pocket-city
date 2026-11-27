@@ -8,7 +8,7 @@ function makeCar(col){
   const obj=new THREE.Group(),rig=new THREE.Group(),body=new THREE.Mesh(B.build(),propMat),lights=new THREE.Mesh(L.build(),carLightMat);
   body.castShadow=true;body.receiveShadow=true;rig.add(body,lights);obj.add(rig);scene.add(obj);
   // spin/wsteer drive the wheels; sy/svy (bounce) and pa/pw (nose up/down) are the body's springs
-  return {obj,rig,h:0,v:0,steer:0,src:null,spin:0,wsteer:0,sy:0,svy:0,pa:0,pw:0};
+  return {obj,rig,h:0,v:0,vl:0,steer:0,src:null,spin:0,wsteer:0,sy:0,svy:0,pa:0,pw:0,marks:[null,null]};
 }
 
 /* wheels: every car's wheels are drawn together as one instanced mesh, so the whole city's wheels cost one
@@ -27,7 +27,22 @@ function wheelGeometry(){  // a 12-sided tyre with a 5-sided hubcap (so you can 
 }
 const wheels=new THREE.InstancedMesh(wheelGeometry(),propMat,WMAX);
 wheels.instanceMatrix.setUsage(THREE.DynamicDrawUsage);wheels.frustumCulled=false;wheels.castShadow=true;wheels.receiveShadow=true;scene.add(wheels);
-const _wm=new THREE.Matrix4(),_wq=new THREE.Quaternion(),_we=new THREE.Euler(0,0,0,'YXZ'),_wp=new THREE.Vector3(),_ws=new THREE.Vector3(1,1,1);
+const _wm=new THREE.Matrix4(),_wq=new THREE.Quaternion(),_we=new THREE.Euler(0,0,0,'YXZ'),_wp=new THREE.Vector3(),_ws=new THREE.Vector3(1,1,1),_ms=new THREE.Vector3(),_up=new THREE.Vector3(0,1,0);
+/* tyre marks: dark strips laid behind the rear wheels while sliding. One instanced mesh holds the latest
+   MARKS strips; when it is full the oldest strip is reused. */
+const MARKS=600,tyreMarks=new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2),
+  new THREE.MeshBasicMaterial({color:0x0c0c0c,transparent:true,opacity:0.55,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-4}),MARKS);
+tyreMarks.count=0;tyreMarks.frustumCulled=false;scene.add(tyreMarks);let markNext=0;
+function layTyreMarks(c,sliding){
+  const o=c.obj.position,s=Math.sin(c.h),co=Math.cos(c.h);
+  for(let i=0;i<2;i++){const lx=i?0.95:-0.95,x=o.x+lx*co+1.38*s,z=o.z-lx*s+1.38*co,last=c.marks[i];  // rear wheel in world space
+    c.marks[i]=sliding?{x,z}:null;if(!sliding||!last)continue;
+    const dx=x-last.x,dz=z-last.z,len=Math.hypot(dx,dz);if(len<0.05||len>3)continue;
+    _wp.set((x+last.x)/2,groundY(x,z)+0.14,(z+last.z)/2);  // high enough to sit on lawns, plazas and the stadium pitch
+    _wq.setFromAxisAngle(_up,Math.atan2(dx,dz));_ms.set(0.26,1,len+0.05);
+    tyreMarks.setMatrixAt(markNext,_wm.compose(_wp,_wq,_ms));markNext=(markNext+1)%MARKS;tyreMarks.count=Math.max(tyreMarks.count,markNext||MARKS);}
+  tyreMarks.instanceMatrix.needsUpdate=true;
+}
 function updateWheels(dt,F){
   let n=0;
   const add=c=>{const o=c.obj;if(n>WMAX-4||Math.abs(o.position.x-F.x)>170||Math.abs(o.position.z-F.z)>170)return;  // far cars are hidden by fog anyway

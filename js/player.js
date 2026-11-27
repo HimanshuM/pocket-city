@@ -20,16 +20,25 @@ function carCollide(c){
     const dx=t.x-bx,dz=t.z-bz;pos.x+=dx;pos.z+=dz;tx+=dx;tz+=dz;}
   return [tx,tz];}
 function drive(dt,inp){
-  const c=player.car,th=inp.y,st=-inp.x,v0=c.v;
+  const c=player.car,th=inp.y,st=-inp.x,v0=c.v,hb=inp.jump;
   if(th>0)c.v+=(c.v<0?24:12)*th*dt;else if(th<0)c.v-=(c.v>0.5?26:7)*(-th)*dt;else c.v-=c.v*0.5*dt;
-  if(inp.jump)c.v*=Math.exp(-2.2*dt);
+  if(hb)c.v*=Math.exp(-1.2*dt);  // handbrake: slows you, but mostly makes the back slide
   c.v-=c.v*Math.abs(c.v)*0.006*dt;c.v=clamp(c.v,-9,34);
   c.steer+=(st-c.steer)*(1-Math.exp(-dt*8));c.wsteer=c.steer*0.55;
-  const sp=Math.abs(c.v),turn=c.steer*1.9*Math.min(1,sp/6)*(1-0.5*Math.min(1,sp/34))*Math.sign(c.v)*(inp.jump?1.5:1);
-  c.h+=turn*dt;const fx=-Math.sin(c.h),fz=-Math.cos(c.h),pos=c.obj.position;
-  pos.x+=fx*c.v*dt;pos.z+=fz*c.v*dt;
+  const sp=Math.abs(c.v),turn=c.steer*1.9*Math.min(1,sp/6)*(1-0.5*Math.min(1,sp/34))*Math.sign(c.v)*(hb?1.7:1);
+  // drift: the car keeps its momentum when it turns, so it picks up sideways speed (vl, + = to the right),
+  // and tyre grip removes it over time. Grip drops at high speed and a lot with the handbrake, so the back slides.
+  let Vx=-Math.sin(c.h)*c.v+Math.cos(c.h)*c.vl,Vz=-Math.cos(c.h)*c.v-Math.sin(c.h)*c.vl;
+  c.h+=turn*dt;const fx=-Math.sin(c.h),fz=-Math.cos(c.h),rx=-fz,rz=fx,pos=c.obj.position;
+  c.v=Vx*fx+Vz*fz;c.vl=Vx*rx+Vz*rz;
+  c.vl*=Math.exp(-(hb?1.1:lerp(9,3.5,clamp((sp-14)/20,0,1)))*dt);
+  pos.x+=(fx*c.v+rx*c.vl)*dt;pos.z+=(fz*c.v+rz*c.vl)*dt;
   const [hx,hz]=carCollide(c);
-  if(hx||hz){const n=Math.hypot(hx,hz),into=(fx*hx+fz*hz)/n*c.v;if(into<-2){c.v*=-0.25;cam.shake=Math.min(1,-into/15);}else c.v*=0.96;}
+  if(hx||hz){const n=Math.hypot(hx,hz),nx=hx/n,nz=hz/n;Vx=fx*c.v+rx*c.vl;Vz=fz*c.v+rz*c.vl;const vn=Vx*nx+Vz*nz;
+    if(vn<-2){Vx-=nx*vn*1.25;Vz-=nz*vn*1.25;cam.shake=Math.min(1,-vn/15);}  // hit: bounce off a little
+    else{if(vn<0){Vx-=nx*vn;Vz-=nz*vn;}Vx*=0.96;Vz*=0.96;}  // scrape: slide along it
+    c.v=Vx*fx+Vz*fz;c.vl=Vx*rx+Vz*rz;}
+  layTyreMarks(c,Math.abs(c.vl)>2.5||(hb&&sp>6));
   // suspension: the wheels follow the ground at once and the body lags on springs, so kerbs make it bob;
   // the nose lifts when you accelerate and dips when you brake, and the body leans in turns
   const g=groundY(pos.x,pos.z);c.sy-=g-pos.y;pos.y=g;c.obj.rotation.y=c.h;
@@ -46,7 +55,7 @@ function interact(){
     for(const side of [-1,1]){const t={x:pos.x+side*co*2.2,z:pos.z-side*s*2.2};
       const blocked=gatherBoxes(t.x,t.z).some(b=>t.x>b[0]-0.4&&t.x<b[2]+0.4&&t.z>b[1]-0.4&&t.z<b[3]+0.4);
       if(!blocked||side===1){p.x=t.x;p.z=t.z;break;}}
-    c.v=0;c.steer=0;c.sy=c.svy=c.pa=c.pw=0;c.rig.position.y=0;c.rig.rotation.set(0,0,0);c.src='free';freeCars.push(c);scene.add(headlight,headlight.target);headlight.intensity=0;
+    c.v=c.vl=0;c.steer=0;c.sy=c.svy=c.pa=c.pw=0;c.rig.position.y=0;c.rig.rotation.set(0,0,0);c.src='free';freeCars.push(c);scene.add(headlight,headlight.target);headlight.intensity=0;
     p.car=null;p.h=c.h;p.y=groundY(p.x,p.z);p.man.g.visible=true;p.man.g.position.set(p.x,p.y,p.z);return;}
   let best=null,bd=1.8;for(const c of nearCars(p.x,p.z,7)){const d=obbDist(p.x,p.z,c);if(d<bd){bd=d;best=c;}}
   if(!best)return;detach(best);p.car=best;best.obj.add(headlight,headlight.target);p.man.g.visible=false;cam.lastLook=0;

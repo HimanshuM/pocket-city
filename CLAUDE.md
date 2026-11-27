@@ -102,6 +102,7 @@ When you change something visual or behavioural, verify it actually works. Don't
 **Cars the player can use:**
 - Any car can be entered: traffic, parked or "free". A car's `src` says which list owns it, and `detach()` removes it from that list.
 - **Car body springs** (player's car): the car object follows the ground and `rig` (the body) lags on springs. `sy/svy` is the vertical bounce and `pa/pw` the nose pitch from acceleration. `wsteer` is the front-wheel angle (player: from steering; traffic: from how fast it's turning).
+- **Drift** (player's car, `drive()`): `c.v` is forward speed and `c.vl` sideways speed (+ = right). Turning keeps momentum, so sideways speed appears, and tyre grip removes it: high normally, lower at high speed, very low with the handbrake. Hitting things uses the full velocity: bounce on a hard hit, slide along on a scrape. Tyre marks (`layTyreMarks`) are one instanced mesh of the latest 600 strips, laid 0.14 m above `groundY` so they sit on lawns, plazas and the pitch.
 - A car the player leaves becomes a "free" car (teal dots on the minimap). Free cars are removed when more than 460 m away.
 
 **Materials:**
