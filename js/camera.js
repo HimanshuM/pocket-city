@@ -20,9 +20,6 @@ function updateCamera(dt,F,now){
     if(boxes.some(b=>y<b[4]&&x>b[0]-0.3&&x<b[2]+0.3&&z>b[1]-0.3&&z<b[3]+0.3)){d=Math.max(1.2,s-0.6);break;}}
   const tx=F.x+camDir.x*d,tyy=ty+camDir.y*d-0.8*ku,tz=F.z+camDir.z*d,k=1-Math.exp(-dt*12);
   camera.position.set(lerp(camera.position.x,tx,k),Math.max(0.6,lerp(camera.position.y,tyy,k)),lerp(camera.position.z,tz,k));
-  // a faint, smooth rumble near top speed
-  const rumble=0.035*clamp((sp-20)/14,0,1);
-  if(rumble>0){camera.position.x+=Math.sin(now*0.031)*Math.sin(now*0.0113)*rumble;camera.position.y+=Math.sin(now*0.027+1)*Math.sin(now*0.0071)*rumble;}
   if(cam.shake>0){camera.position.x+=(R0()-0.5)*cam.shake*0.5;camera.position.y+=(R0()-0.5)*cam.shake*0.5;cam.shake=Math.max(0,cam.shake-dt*2.5);}
   if(up>0){const hx=F.x-camera.position.x,hz=F.z-camera.position.z,hl=Math.hypot(hx,hz)||1,cu=Math.cos(up)*10/hl;
     camera.lookAt(camera.position.x+hx*cu,camera.position.y+Math.sin(up)*10,camera.position.z+hz*cu);}
