@@ -88,17 +88,35 @@ function detach(c){
 /* traffic: cars follow lanes on the road grid and pick a turn at every junction */
 function tPose(c){
   let x,z,fx,fz;
-  if(c.mode==='road'){const [dx,dz]=c.d;x=c.node[0]*CH-dz*3+dx*(6+c.s);z=c.node[1]*CH+dx*3+dz*(6+c.s);fx=dx;fz=dz;}
+  // road: lane centre 3 m right of the road's centre line, shifted toward the oncoming lane by c.lo while overtaking
+  if(c.mode==='road'){const [dx,dz]=c.d;x=c.node[0]*CH-dz*3+dx*(6+c.s)+dz*c.lo;z=c.node[1]*CH+dx*3+dz*(6+c.s)-dx*c.lo;fx=dx;fz=dz;}
   else{const t=c.t,u=1-t,E=c.E,P=c.P,X=c.X;x=u*u*E.x+2*u*t*P.x+t*t*X.x;z=u*u*E.z+2*u*t*P.z+t*t*X.z;
     fx=2*u*(P.x-E.x)+2*t*(X.x-P.x);fz=2*u*(P.z-E.z)+2*t*(X.z-P.z);}
-  c.h=Math.atan2(-fx,-fz);c.obj.position.set(x,0,z);c.obj.rotation.y=c.h;}
-function tStartTurn(c){
-  const [dx,dz]=c.d,node=[c.node[0]+dx,c.node[1]+dz],nd=pick([[dx,dz],[dx,dz],[-dz,dx],[dz,-dx]].filter(o=>node[1]+o[1]<=COAST_CZ),R0),cx=node[0]*CH,cz=node[1]*CH;
+  c.h=Math.atan2(-fx,-fz)+(c.mode==='road'?Math.atan2(c.lov,Math.max(c.v,1)):0);c.obj.position.set(x,0,z);c.obj.rotation.y=c.h;}  // nose into a lane change
+// the curve through junction `node` from direction d to direction nd: a quadratic Bezier E -> P -> X
+function turnGeom(node,d,nd){
+  const [dx,dz]=d,cx=node[0]*CH,cz=node[1]*CH;
   const E={x:cx-dz*3-dx*6,z:cz+dx*3-dz*6},X={x:cx-nd[1]*3+nd[0]*6,z:cz+nd[0]*3+nd[1]*6};
   const P=(nd[0]===dx&&nd[1]===dz)?{x:(E.x+X.x)/2,z:(E.z+X.z)/2}:{x:cx-dz*3-nd[1]*3,z:cz+dx*3+nd[0]*3};
-  Object.assign(c,{mode:'turn',E,P,X,t:0,node,nd});
   let len=0,px=E.x,pz=E.z;for(let i=1;i<=8;i++){const t=i/8,u=1-t,x=u*u*E.x+2*u*t*P.x+t*t*X.x,z=u*u*E.z+2*u*t*P.z+t*t*X.z;len+=Math.hypot(x-px,z-pz);px=x;pz=z;}
-  c.len=len;}
+  return {E,P,X,len,node};
+}
+// choose the direction at the next junction as soon as the car enters a street, so its whole path ahead is known
+function chooseNext(c){
+  const [dx,dz]=c.d,node=[c.node[0]+dx,c.node[1]+dz];
+  c.nd=pick([[dx,dz],[dx,dz],[-dz,dx],[dz,-dx]].filter(o=>node[1]+o[1]<=COAST_CZ),R0);c.next=turnGeom(node,c.d,c.nd);
+}
+function tStartTurn(c){Object.assign(c,c.next,{mode:'turn',t:0,lo:0,loT:0,lov:0});}
+// a point on the lane: s metres along the street leaving `node` in direction d, lo metres toward the oncoming lane
+function roadPt(node,d,s,lo,out){const [dx,dz]=d;out.x=node[0]*CH-dz*3+dx*(6+s)+dz*lo;out.z=node[1]*CH+dx*3+dz*(6+s)-dx*lo;return out;}
+function bzPt(G,t,out){const u=1-t;out.x=u*u*G.E.x+2*u*t*G.P.x+t*t*G.X.x;out.z=u*u*G.E.z+2*u*t*G.P.z+t*t*G.X.z;return out;}
+// where the car's centre will be after driving `dist` metres further along its path (street, junction curve, next street)
+function pathAhead(c,dist,out){
+  let G,t;
+  if(c.mode==='road'){const rem=CH-12-c.s;if(dist<=rem)return roadPt(c.node,c.d,c.s+dist,c.lo,out);G=c.next;t=(dist-rem)/G.len;}
+  else{G=c;t=c.t+dist/c.len;}
+  return t<=1?bzPt(G,t,out):roadPt(G.node,c.nd,(t-1)*G.len,0,out);
+}
 function spawnTraffic(c,F,init){
   const fx=Math.round(F.x/CH),fz=Math.round(F.z/CH);
   for(let tries=0;tries<20;tries++){
@@ -106,19 +124,53 @@ function spawnTraffic(c,F,init){
     const x=node[0]*CH-d[1]*3+d[0]*(6+s),z=node[1]*CH+d[0]*3+d[1]*(6+s),dist=Math.hypot(x-F.x,z-F.z);
     if(dist<(init?25:80)||dist>R*CH||Math.max(node[1],node[1]+d[1])>COAST_CZ)continue;  // no roads into the sea
     if(traffic.some(o=>o!==c&&Math.hypot(o.obj.position.x-x,o.obj.position.z-z)<12))continue;
+    if(freeCars.some(o=>Math.hypot(o.obj.position.x-x,o.obj.position.z-z)<12)||Math.hypot(player.x-x,player.z-z)<12)continue;  // not on top of a car left in the road, or you
     if(!c){c=makeCar(pick(CAR_COLS,R0),pickCarType(R0));c.src='traffic';traffic.push(c);}
-    Object.assign(c,{mode:'road',node,d,s,cruise:8+R0()*4,v:6,stuck:0,ignore:0});tPose(c);return;}
+    Object.assign(c,{mode:'road',node,d,s,cruise:8+R0()*4,v:6,stuck:0,ignore:0,lo:0,loT:0,lov:0,held:0});chooseNext(c);tPose(c);return;}
+}
+// is the oncoming lane free from just behind this car to len metres ahead of it?
+function oncomingClear(c,len){
+  const q=c.obj.position,[dx,dz]=c.d,ox=q.x+dz*6,oz=q.z-dx*6;  // the spot beside us in the oncoming lane
+  const busy=(x,z)=>{const rx=x-ox,rz=z-oz,a=rx*dx+rz*dz;return a>-4&&a<len&&Math.abs(rx*dz-rz*dx)<1.6;};  // 1.6 m: in that lane, not parked at its kerb
+  for(const o of traffic)if(o!==c&&busy(o.obj.position.x,o.obj.position.z))return false;
+  for(const o of freeCars)if(busy(o.obj.position.x,o.obj.position.z))return false;
+  const pc=player.car;return !(pc?busy(pc.obj.position.x,pc.obj.position.z):busy(player.x,player.z));
+}
+const _near=[],_pa={x:0,z:0};
+// the first obstacle along the car's path: [free road ahead of its front bumper, what it is]. near = [kind, object, ...]
+function firstHit(c,near){
+  const clear=c.T.hw*0.85;
+  for(let k=1;k<=16;k++){const dist=k*0.9;pathAhead(c,dist,_pa);
+    for(let i=0;i<near.length;i+=2){const o=near[i+1];
+      if(o?obbDist(_pa.x,_pa.z,o)<clear:Math.hypot(_pa.x-player.x,_pa.z-player.z)<clear+0.5)return [dist-c.T.hl,near[i]];}}
+  return [1e9,null];
 }
 function updateTraffic(dt,F){
   if(traffic.length<MAXT)spawnTraffic(null,F,false);
   const pc=player.car;
   for(const c of traffic){
-    const q=c.obj.position,fx=-Math.sin(c.h),fz=-Math.cos(c.h);let block=1e9,blocker=null;
-    const test=(ox,oz,o)=>{const rx=ox-q.x,rz=oz-q.z,a=rx*fx+rz*fz;if(a<=0.5||a>13)return;if(Math.abs(rx*-fz+rz*fx)<1.9&&a<block){block=a;blocker=o;}};  // 1.9 m: in this lane, not parked alongside
-    if(pc)test(pc.obj.position.x,pc.obj.position.z);else test(player.x,player.z);
-    if(c.ignore<=0)for(const o of freeCars)test(o.obj.position.x,o.obj.position.z);  // a car left in the road can be passed once stuck
-    if(c.ignore<=0)for(const o of traffic)if(o!==c&&Math.abs(o.obj.position.x-q.x)<14&&Math.abs(o.obj.position.z-q.z)<14)test(o.obj.position.x,o.obj.position.z,o);
-    let target=block<6.5?0:block<13?c.cruise*0.35:c.cruise;
+    const q=c.obj.position;
+    // look along the path we're about to drive (including the curve through the next junction) for the first thing
+    // in the way: 'you' (you or your car), 'parked' (a car left in the road) or a traffic car. gap = free road ahead
+    // of our front bumper. Traffic never drives through traffic, except a car stuck inside a junction behind other
+    // traffic (gridlock, once we've been stuck 3.5 s). A car held up by you or a parked car is never driven through.
+    const near=_near;near.length=0;const close=o=>Math.abs(o.obj.position.x-q.x)<22&&Math.abs(o.obj.position.z-q.z)<22;
+    if(pc)near.push('you',pc);else near.push('you',null);
+    for(const o of freeCars)if(close(o))near.push('parked',o);
+    for(const o of traffic)if(o!==c&&close(o)&&(c.ignore<=0||o.mode!=='turn'||o.bk!=='car'))near.push(o,o);
+    let [gap,blocker]=firstHit(c,near);
+    // something standing in the junction ahead (you, your car, a car left there): try another way through it
+    const still=blocker==='parked'||(blocker==='you'&&(!pc||Math.abs(pc.v)<0.5));
+    // (works on the approach, or just after entering the junction, by switching to another exit's curve)
+    const turning=c.mode==='turn';
+    if(still&&c.v<0.5&&(turning?c.t<0.35:gap+c.T.hl>CH-12-c.s)&&(c.rr=(c.rr||0)+dt)>1){c.rr=0;
+      const [dx,dz]=c.d,node=turning?c.node:c.next.node,old=turning?[c.nd,c.E,c.P,c.X,c.len]:[c.nd,c.next];
+      for(const nd of [[dx,dz],[-dz,dx],[dz,-dx]])if(node[1]+nd[1]<=COAST_CZ&&(nd[0]!==c.nd[0]||nd[1]!==c.nd[1])){
+        const G=turnGeom(node,c.d,nd);c.nd=nd;if(turning){c.E=G.E;c.P=G.P;c.X=G.X;c.len=G.len;}else c.next=G;
+        const h=firstHit(c,near);if(h[0]>8||(h[1]&&typeof h[1]==='object')){[gap,blocker]=h;break;}
+        if(turning)[c.nd,c.E,c.P,c.X,c.len]=old;else[c.nd,c.next]=old;}}
+    c.bk=!blocker?null:typeof blocker==='string'?blocker:'car';  // what's holding us up: 'you', 'parked' or 'car'
+    let target=gap<1.5?0:gap<8?c.cruise*0.35:c.cruise;
     // traffic lights: stop at the line on red, and on yellow if there's room to stop (about 6 m/s² of braking)
     c.waitLight=false;
     if(c.mode==='road'){const nx=c.node[0]+c.d[0],nz=c.node[1]+c.d[1];
@@ -127,13 +179,19 @@ function updateTraffic(dt,F){
         if(st!=='g'&&dd>-0.5&&c.goJ!==key&&(st==='r'||c.v*c.v/12<dd)){target=Math.min(target,dd<=0.3?0:Math.sqrt(10*dd));c.waitLight=true;}}}
     // queueing behind a car that waits at a light isn't "stuck", so it never pushes through the queue. Only a real
     // queue counts (same road, same direction), and anything still waiting after 30 s may unstick as a safety net.
-    const o=blocker;c.queued=!!(o&&block<13&&o.mode==='road'&&c.mode==='road'&&o.d[0]===c.d[0]&&o.d[1]===c.d[1]&&(o.waitLight||o.queued));
+    const o=typeof blocker==='object'?blocker:null;c.queued=!!(o&&gap<8&&o.mode==='road'&&c.mode==='road'&&o.d[0]===c.d[0]&&o.d[1]===c.d[1]&&(o.waitLight||o.queued));
     c.wait=c.v<0.3?(c.wait||0)+dt:0;
     if(c.v<0.3&&target===0&&((!c.waitLight&&!c.queued)||c.wait>30))c.stuck+=dt;else c.stuck=0;
     if(c.stuck>3.5){c.ignore=2.5;c.stuck=0;} c.ignore-=dt;
+    // overtaking: held up for 1.5 s mid-block by something that isn't moving and isn't traffic (you, your car, a car
+    // left in the road), with the oncoming lane clear and room to finish before the junction: swing out, pass, pull in
+    c.held=c.mode==='road'&&c.loT===0&&still&&c.v<0.5?c.held+dt:0;
+    if(c.held>1.5){const end=c.s+gap+13;if(end<CH-14&&oncomingClear(c,gap+45)){c.loT=6;c.passEnd=end;}c.held=0;}
+    if(c.loT>0&&c.s>c.passEnd)c.loT=0;
+    if(c.mode==='road'){const step=3*dt,dl=clamp(c.loT-c.lo,-step,step);c.lo+=dl;c.lov=dl/Math.max(dt,1e-4);}
     c.v+=clamp(target-c.v,-16*dt,4*dt);
     if(c.mode==='road'){c.s+=c.v*dt;if(c.s>=CH-12){const over=c.s-(CH-12);tStartTurn(c);c.t=over/c.len;}}
-    else{c.t+=c.v*dt/c.len;if(c.t>=1){const over=(c.t-1)*c.len;c.d=c.nd;c.mode='road';c.s=over;}}
+    else{c.t+=c.v*dt/c.len;if(c.t>=1){const over=(c.t-1)*c.len;c.d=c.nd;c.mode='road';c.s=over;chooseNext(c);}}
     const h0=c.h;tPose(c);
     // front wheels follow the turn: steering angle from how fast the car is turning
     c.wsteer+=(clamp(Math.atan(wrapA(c.h-h0)/Math.max(dt,1e-4)*2.76/Math.max(c.v,1)),-0.6,0.6)-c.wsteer)*(1-Math.exp(-dt*10));
