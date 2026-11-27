@@ -15,11 +15,14 @@ function city(k,dt){
     const px=-BLD+pw/2+i*(pw+gap),pz=-BLD+pd/2+j*(pd+gap),roll=r();
     if(roll<0.08){P.box(px,0.2,pz,pw,0.06,pd,0x7cb860);tree(k,px,pz);continue;}
     if(roll<0.15){P.box(px,0.2,pz,pw,0.03,pd,0x55585f);for(let s=-1;s<=1;s+=2)P.box(px+s*pw*0.2,0.23,pz,0.15,0.01,pd*0.8,0xe8e8e8);continue;}
-    const w=pw-0.5-r()*2.5,d=pd-0.5-r()*2.5,floors=Math.max(2,Math.round((2+r()*5)*dt*(0.55+r()*0.9))),h=floors*3.5,col=pick(BCOLS,r);
-    B.box(px,0.2,pz,w,h,d,col,true);P.box(px,0.2+h,pz,w+0.3,0.45,d+0.3,shade(col,0.82));solid(k,px,pz,w/2,d/2,h+0.65);
+    const w=pw-0.5-r()*2.5,d=pd-0.5-r()*2.5,floors=Math.max(2,Math.round((2+r()*5)*dt*(0.55+r()*0.9))),h=floors*3.5;
+    // towers are mostly glass or art deco; shorter buildings mix brick, classic, ribbon windows and deco
+    const fs=floors>12?pick(['glass','glass','deco','classic'],r):pick(['brick','brick','classic','classic','ribbon','deco'],r);
+    const col=fs==='glass'?pick(GLASS_COLS,r):fs==='brick'?pick(BRICK_COLS,r):pick(BCOLS,r);
+    B.box(px,0.2,pz,w,h,d,col,fs);P.box(px,0.2+h,pz,w+0.3,0.45,d+0.3,shade(col,0.82));solid(k,px,pz,w/2,d/2,h+0.65);
     let top=h+0.65;
     if(floors>9&&r()<0.65){const w2=w*(0.45+r()*0.25),d2=d*(0.45+r()*0.25),f2=Math.max(2,Math.round(floors*(0.25+r()*0.35)));
-      B.box(px,top,pz,w2,f2*3.5,d2,shade(col,1.06),true);top+=f2*3.5;P.box(px,top,pz,w2+0.3,0.4,d2+0.3,shade(col,0.82));top+=0.4;k.boxes[k.boxes.length-1][4]=top;}
+      B.box(px,top,pz,w2,f2*3.5,d2,shade(col,1.06),fs);top+=f2*3.5;P.box(px,top,pz,w2+0.3,0.4,d2+0.3,shade(col,0.82));top+=0.4;k.boxes[k.boxes.length-1][4]=top;}
     if(r()<0.55)P.box(px+(r()-0.5)*w*0.3,top,pz+(r()-0.5)*d*0.3,1.5+r()*2,1.1,1.5+r()*2,0x9aa1aa);
     if(r()<0.6){const ac=pick(AWN,r);
       if(i===0)P.box(px-w/2-0.6,3.3,pz,1.2,0.18,d*0.7,ac); if(i===nx-1)P.box(px+w/2+0.6,3.3,pz,1.2,0.18,d*0.7,ac);
@@ -47,7 +50,7 @@ function townSquare(k){
   bench(k,0,9,true);bench(k,0,-9,true);bench(k,9,0,false);bench(k,-9,0,false);
   const cafe=[0xf0c987,0xd99a6c,0xc9d6df,0xe6b8a2];let n=0;
   for(const sx of [-1,1])for(const sz of [-1,1]){const x=sx*23,z=sz*23;
-    B.box(x,0.2,z,12,7,12,cafe[n],true);P.box(x,7.2,z,12.4,0.5,12.4,shade(cafe[n],0.8));solid(k,x,z,6,6,7.7);
+    B.box(x,0.2,z,12,7,12,cafe[n],'brick');P.box(x,7.2,z,12.4,0.5,12.4,shade(cafe[n],0.8));solid(k,x,z,6,6,7.7);
     P.box(x-sx*6.6,3.3,z,1.2,0.18,9,AWN[n]);P.box(x,3.3,z-sz*6.6,9,0.18,1.2,AWN[n]);n++;}
 }
 /* districts: the map is split into irregular regions of roughly 4x4 blocks, each with its own kind of block */
@@ -74,7 +77,7 @@ function residential(k){
     const pbox=(a,y,b,la,h,ld,col)=>{const [x,z]=at(a,b),[sx,sz]=dims(la,ld);P.box(x,y,z,sx,h,sz,col);return [x,z,sx,sz];};
     P.box(px,0.2,pz,pw-0.8,0.06,pw-0.8,pick(GREENS,r));
     const w=8+r()*3,d=7+r()*2,h=(r()<0.55?2:1)*3.5,rh=2+r()*1.2,col=pick(HOUSE_COLS,r),[hx,hz]=at(-2,0),[sx,sz]=dims(w,d);
-    B.box(hx,0.2,hz,sx,h,sz,col,true);P.roof(hx,0.2+h,hz,sx+0.8,rh,sz+0.8,pick(ROOF_COLS,r),ax,col);solid(k,hx,hz,sx/2,sz/2,0.2+h+rh);
+    B.box(hx,0.2,hz,sx,h,sz,col,'house');P.roof(hx,0.2+h,hz,sx+0.8,rh,sz+0.8,pick(ROOF_COLS,r),ax,col);solid(k,hx,hz,sx/2,sz/2,0.2+h+rh);
     pbox(d/2-1.95,0.2,0,1.2,2.3,0.12,0x6b4a2f);  // front door
     const db=(r()<0.5?-1:1)*(w/2+1.8),front=d/2-2;
     pbox(3.8,0.2,db,3,0.08,11.6,0x8e8a84);  // driveway
@@ -106,7 +109,7 @@ function industrial(k){
   for(let n=0;n<3;n++)P.box(wx+(r()-0.5)*ww*0.6,0.55+wh,wz+(r()-0.5)*wd*0.7,2,1,2,0x9aa1aa);
   const doors=Math.floor(wd/9);
   for(let n=0;n<doors;n++)P.box(wx-sx*(ww/2+0.06),0.2,wz-wd/2+(n+0.5)*wd/doors,0.12,4.4,4.2,0x50565e);
-  B.box(wx,0.2,az,aw,7,8,0xd9d4c7,true);P.box(wx,7.2,az,aw+0.3,0.4,8.3,0x9a958a);solid(k,wx,az,aw/2,4,7.6);
+  B.box(wx,0.2,az,aw,7,8,0xd9d4c7,'ribbon');P.box(wx,7.2,az,aw+0.3,0.4,8.3,0x9a958a);solid(k,wx,az,aw/2,4,7.6);
   if(r()<0.5){const x=wx+sx*(ww/2-3),z=wz+wd/2-3,H=16+r()*8;  // chimney with red bands
     P.box(x,0.2,z,1.8,H,1.8,0xb8b2a8);P.box(x,H-2.8,z,1.9,1.2,1.9,0xc0392b);P.box(x,H-6,z,1.9,1.2,1.9,0xc0392b);solid(k,x,z,0.9,0.9,H+0.2);}
   // shipping containers stacked 1-3 high on the other side
