@@ -24,7 +24,7 @@ The long-term aim is a game that *feels* like a GTA-style open world: good-looki
 
 When you change something visual or behavioural, verify it actually works. Don't stop at "the code looks right":
 
-- Run the game with headless Chrome via Playwright. Use the flags `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`, so WebGL works without a GPU. Then take screenshots and look at them.
+- Run the game with headless Chrome via Playwright. Use the flags `--use-gl=angle --use-angle=swiftshader --enable-unsafe-swiftshader`, so WebGL works without a GPU. Then take screenshots and look at them. Save screenshots in `screenshots/`, which is gitignored, never anywhere else in the project.
 - Use `window.pocketCity` to teleport the player, enter a car, or set the time before taking a screenshot.
 - Check the console for errors. A single exception in the frame loop freezes the game.
 - Software rendering is very slow (~5 fps), so don't judge performance from it. Count draw calls with `renderer.info.render.calls` instead.
