@@ -12,7 +12,7 @@ if (!window.THREE) {
 const CH = 80, HALF = 40, ROADW = 6, LOT = 34, BLD = 30;  // chunk size, road half-width, lot half-size, building zone
 const COAST_CZ = 4, COAST_Z = COAST_CZ*CH + HALF - LOT;  // shore block row (seaside road along its north edge); shore surfaces start at z = COAST_Z
 const R = 3;                       // stream radius in chunks (7x7 around you)
-const SEED = 20261127, DAY_LEN = 480;
+const SEED = 20261127, DAY_LEN = 1440;  // seconds per in-game day: 1 game minute = 1 real second, as in classic GTA
 const clamp=(v,a,b)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
 const smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
 const wrapA=a=>{while(a>Math.PI)a-=2*Math.PI;while(a<-Math.PI)a+=2*Math.PI;return a;};

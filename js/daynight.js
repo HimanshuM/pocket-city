@@ -1,5 +1,5 @@
 /* ---------- day and night ---------- */
-let dayT=0.6;
+let dayT=10/24;  // time of day as 0..1 (0.5 = noon); start at 10:00
 const C={nTop:new THREE.Color(0x050a1f),dTop:new THREE.Color(0x4f9be8),duTop:new THREE.Color(0x6a5a9a),nHor:new THREE.Color(0x18203f),dHor:new THREE.Color(0xbfe3ff),duHor:new THREE.Color(0xff9a62),
   sunD:new THREE.Color(0xfff4e0),sunDu:new THREE.Color(0xff8a4a),moon:new THREE.Color(0x8fa8ff),hN:new THREE.Color(0x4a5a8a),hD:new THREE.Color(0xd6ecff)};
 let night=0;
