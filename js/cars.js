@@ -137,13 +137,13 @@ function oncomingClear(c,len){
   const pc=player.car;return !(pc?busy(pc.obj.position.x,pc.obj.position.z):busy(player.x,player.z));
 }
 const _near=[],_pa={x:0,z:0};
-// the first obstacle along the car's path: [free road ahead of its front bumper, what it is]. near = [kind, object, ...]
+// the first obstacle along the car's path: [free road ahead of its front bumper, what it is, the object (null = you on foot)]
 function firstHit(c,near){
   const clear=c.T.hw*0.85;
   for(let k=1;k<=16;k++){const dist=k*0.9;pathAhead(c,dist,_pa);
     for(let i=0;i<near.length;i+=2){const o=near[i+1];
-      if(o?obbDist(_pa.x,_pa.z,o)<clear:Math.hypot(_pa.x-player.x,_pa.z-player.z)<clear+0.5)return [dist-c.T.hl,near[i]];}}
-  return [1e9,null];
+      if(o?obbDist(_pa.x,_pa.z,o)<clear:Math.hypot(_pa.x-player.x,_pa.z-player.z)<clear+0.5)return [dist-c.T.hl,near[i],o];}}
+  return [1e9,null,null];
 }
 function updateTraffic(dt,F){
   if(traffic.length<MAXT)spawnTraffic(null,F,false);
@@ -158,7 +158,7 @@ function updateTraffic(dt,F){
     if(pc)near.push('you',pc);else near.push('you',null);
     for(const o of freeCars)if(close(o))near.push('parked',o);
     for(const o of traffic)if(o!==c&&close(o)&&(c.ignore<=0||o.mode!=='turn'||o.bk!=='car'))near.push(o,o);
-    let [gap,blocker]=firstHit(c,near);
+    let [gap,blocker,hitObj]=firstHit(c,near);
     // something standing in the junction ahead (you, your car, a car left there): try another way through it
     const still=blocker==='parked'||(blocker==='you'&&(!pc||Math.abs(pc.v)<0.5));
     // (works on the approach, or just after entering the junction, by switching to another exit's curve)
@@ -167,16 +167,19 @@ function updateTraffic(dt,F){
       const [dx,dz]=c.d,node=turning?c.node:c.next.node,old=turning?[c.nd,c.E,c.P,c.X,c.len]:[c.nd,c.next];
       for(const nd of [[dx,dz],[-dz,dx],[dz,-dx]])if(node[1]+nd[1]<=COAST_CZ&&(nd[0]!==c.nd[0]||nd[1]!==c.nd[1])){
         const G=turnGeom(node,c.d,nd);c.nd=nd;if(turning){c.E=G.E;c.P=G.P;c.X=G.X;c.len=G.len;}else c.next=G;
-        const h=firstHit(c,near);if(h[0]>8||(h[1]&&typeof h[1]==='object')){[gap,blocker]=h;break;}
+        const h=firstHit(c,near);if(h[0]>8||(h[1]&&typeof h[1]==='object')){[gap,blocker,hitObj]=h;break;}
         if(turning)[c.nd,c.E,c.P,c.X,c.len]=old;else[c.nd,c.next]=old;}}
     c.bk=!blocker?null:typeof blocker==='string'?blocker:'car';  // what's holding us up: 'you', 'parked' or 'car'
     let target=gap<1.5?0:gap<8?c.cruise*0.35:c.cruise;
+    // a car coming toward us in our lane (one that's overtaking): stop well short so it has room to pull back in
+    const o2=typeof blocker==='object'&&blocker;if(o2&&o2.lo>0.5&&Math.cos(o2.h-c.h)<-0.5&&gap<14)target=gap<10?0:c.cruise*0.3;
     // traffic lights: stop at the line on red, and on yellow if there's room to stop (about 6 m/s² of braking)
     c.waitLight=false;
     if(c.mode==='road'){const nx=c.node[0]+c.d[0],nz=c.node[1]+c.d[1];
       if(hasSignals(nx,nz)){const st=signalAt(nx,nz,c.d[0]?1:0),dd=CH-16.2-c.T.hl-c.s;  // distance to the stop line
         const key=nx+','+nz;if(st==='y'&&c.v*c.v/12>=dd&&dd>-0.5)c.goJ=key;  // too close to stop on yellow: commit to going
-        if(st!=='g'&&dd>-0.5&&c.goJ!==key&&(st==='r'||c.v*c.v/12<dd)){target=Math.min(target,dd<=0.3?0:Math.sqrt(10*dd));c.waitLight=true;}}}
+        // (a car still pulling back into its lane after overtaking finishes that first)
+        if(st!=='g'&&dd>-0.5&&c.goJ!==key&&c.lo<0.5&&(st==='r'||c.v*c.v/12<dd)){target=Math.min(target,dd<=0.3?0:Math.sqrt(10*dd));c.waitLight=true;}}}
     // queueing behind a car that waits at a light isn't "stuck", so it never pushes through the queue. Only a real
     // queue counts (same road, same direction), and anything still waiting after 30 s may unstick as a safety net.
     const o=typeof blocker==='object'?blocker:null;c.queued=!!(o&&gap<8&&o.mode==='road'&&c.mode==='road'&&o.d[0]===c.d[0]&&o.d[1]===c.d[1]&&(o.waitLight||o.queued));
@@ -186,9 +189,13 @@ function updateTraffic(dt,F){
     // overtaking: held up for 1.5 s mid-block by something that isn't moving and isn't traffic (you, your car, a car
     // left in the road), with the oncoming lane clear and room to finish before the junction: swing out, pass, pull in
     c.held=c.mode==='road'&&c.loT===0&&still&&c.v<0.5?c.held+dt:0;
-    if(c.held>1.5){const end=c.s+gap+13;if(end<CH-14&&oncomingClear(c,gap+45)){c.loT=6;c.passEnd=end;}c.held=0;}
+    if(c.held>1.5){c.held=0;
+      // pull back in once our rear is past the obstacle's front; that, plus ~4 m to merge, must fit before the stop line
+      const q2=hitObj?hitObj.obj.position:player,oa=(q2.x-q.x)*c.d[0]+(q2.z-q.z)*c.d[1],ohl=hitObj?hitObj.T.hl:0.4;
+      const end=c.s+oa+ohl+c.T.hl+1,limit=hasSignals(c.node[0]+c.d[0],c.node[1]+c.d[1])?CH-16.2-c.T.hl-4:CH-14;
+      if(end<limit&&oncomingClear(c,oa+ohl+70)){c.loT=6;c.passEnd=end;}}
     if(c.loT>0&&c.s>c.passEnd)c.loT=0;
-    if(c.mode==='road'){const step=3*dt,dl=clamp(c.loT-c.lo,-step,step);c.lo+=dl;c.lov=dl/Math.max(dt,1e-4);}
+    if(c.mode==='road'){const step=4*dt,dl=clamp(c.loT-c.lo,-step,step);c.lo+=dl;c.lov=dl/Math.max(dt,1e-4);}
     c.v+=clamp(target-c.v,-16*dt,4*dt);
     if(c.mode==='road'){c.s+=c.v*dt;if(c.s>=CH-12){const over=c.s-(CH-12);tStartTurn(c);c.t=over/c.len;}}
     else{c.t+=c.v*dt/c.len;if(c.t>=1){const over=(c.t-1)*c.len;c.d=c.nd;c.mode='road';c.s=over;chooseNext(c);}}
