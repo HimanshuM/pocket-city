@@ -124,7 +124,7 @@ function industrial(k){
 function meshOf(gb,mat,cast){if(!gb.i.length)return null;const m=new THREE.Mesh(gb.build(),mat);m.castShadow=cast;m.receiveShadow=true;return m;}
 function makeChunk(cx,cz){
   const key=cx+','+cz,r=rng(hash2(cx,cz)),ox=(cx+0.5)*CH,oz=(cz+0.5)*CH;
-  const k={B:new GB(),P:new GB(),G:new GB(),boxes:[],cars:[],ox,oz,r,type:'city'},P=k.P;
+  const k={B:new GB(),P:new GB(),G:new GB(),boxes:[],cars:[],signals:[],ox,oz,r,type:'city'},P=k.P;
   const custom=CUSTOM[key],dist=districtAt(cx,cz),coast=!custom&&(dist==='shore'||dist==='sea');
   if(!coast){  // the raised lot and its curbs
     P.box(0,0,0,LOT*2,0.2,LOT*2,0xb9b2a5);
@@ -137,11 +137,11 @@ function makeChunk(cx,cz){
   else if(dist==='residential'){k.type='residential';residential(k);}
   else if(dist==='industrial'){k.type='industrial';industrial(k);}
   else city(k,1+3.2*Math.exp(-Math.hypot(ox,oz)/240));
-  if(!coast)for(const sx of [-1,1])for(const sz of [-1,1])lamp(k,sx*(LOT-1.2),sz*(LOT-1.2));
+  if(!coast)for(const sx of [-1,1])for(const sz of [-1,1]){lamp(k,sx*(LOT-1.2),sz*(LOT-1.2));signalHead(k,cx,cz,sx,sz);}
   const grp=new THREE.Group();grp.position.set(ox,0,oz);
   const meshes=[meshOf(k.B,facadeMat,true),meshOf(P,propMat,true),meshOf(k.G,glowMat,false)].filter(Boolean);
   meshes.forEach(m=>grp.add(m));scene.add(grp);
-  const ch={key,cx,cz,grp,meshes,boxes:k.boxes,parked:[],type:k.type,peds:!coast};
+  const ch={key,cx,cz,grp,meshes,boxes:k.boxes,parked:[],signals:k.signals,type:k.type,peds:!coast};
   for(const c of k.cars){c.src=ch;ch.parked.push(c);}
   if(!custom&&!coast) for(const [sx,sz,dx,dz] of [[1,0,0,1],[-1,0,0,-1],[0,1,-1,0],[0,-1,1,0]]){
     if(r()>0.4)continue;const al=(r()-0.5)*(CH-30),c=makeCar(pick(CAR_COLS,r),pickCarType(r));

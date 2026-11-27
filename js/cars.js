@@ -113,13 +113,23 @@ function updateTraffic(dt,F){
   if(traffic.length<MAXT)spawnTraffic(null,F,false);
   const pc=player.car;
   for(const c of traffic){
-    const q=c.obj.position,fx=-Math.sin(c.h),fz=-Math.cos(c.h);let block=1e9;
-    const test=(ox,oz)=>{const rx=ox-q.x,rz=oz-q.z,a=rx*fx+rz*fz;if(a<=0.5||a>13)return;if(Math.abs(rx*-fz+rz*fx)<2.3)block=Math.min(block,a);};
+    const q=c.obj.position,fx=-Math.sin(c.h),fz=-Math.cos(c.h);let block=1e9,blocker=null;
+    const test=(ox,oz,o)=>{const rx=ox-q.x,rz=oz-q.z,a=rx*fx+rz*fz;if(a<=0.5||a>13)return;if(Math.abs(rx*-fz+rz*fx)<1.9&&a<block){block=a;blocker=o;}};  // 1.9 m: in this lane, not parked alongside
     if(pc)test(pc.obj.position.x,pc.obj.position.z);else test(player.x,player.z);
-    for(const o of freeCars)test(o.obj.position.x,o.obj.position.z);
-    if(c.ignore<=0)for(const o of traffic)if(o!==c&&Math.abs(o.obj.position.x-q.x)<14&&Math.abs(o.obj.position.z-q.z)<14)test(o.obj.position.x,o.obj.position.z);
-    const target=block<6.5?0:block<13?c.cruise*0.35:c.cruise;
-    if(c.v<0.3&&target===0)c.stuck+=dt;else c.stuck=0;
+    if(c.ignore<=0)for(const o of freeCars)test(o.obj.position.x,o.obj.position.z);  // a car left in the road can be passed once stuck
+    if(c.ignore<=0)for(const o of traffic)if(o!==c&&Math.abs(o.obj.position.x-q.x)<14&&Math.abs(o.obj.position.z-q.z)<14)test(o.obj.position.x,o.obj.position.z,o);
+    let target=block<6.5?0:block<13?c.cruise*0.35:c.cruise;
+    // traffic lights: stop at the line on red, and on yellow if there's room to stop (about 6 m/s² of braking)
+    c.waitLight=false;
+    if(c.mode==='road'){const nx=c.node[0]+c.d[0],nz=c.node[1]+c.d[1];
+      if(hasSignals(nx,nz)){const st=signalAt(nx,nz,c.d[0]?1:0),dd=CH-16.2-c.T.hl-c.s;  // distance to the stop line
+        const key=nx+','+nz;if(st==='y'&&c.v*c.v/12>=dd&&dd>-0.5)c.goJ=key;  // too close to stop on yellow: commit to going
+        if(st!=='g'&&dd>-0.5&&c.goJ!==key&&(st==='r'||c.v*c.v/12<dd)){target=Math.min(target,dd<=0.3?0:Math.sqrt(10*dd));c.waitLight=true;}}}
+    // queueing behind a car that waits at a light isn't "stuck", so it never pushes through the queue. Only a real
+    // queue counts (same road, same direction), and anything still waiting after 30 s may unstick as a safety net.
+    const o=blocker;c.queued=!!(o&&block<13&&o.mode==='road'&&c.mode==='road'&&o.d[0]===c.d[0]&&o.d[1]===c.d[1]&&(o.waitLight||o.queued));
+    c.wait=c.v<0.3?(c.wait||0)+dt:0;
+    if(c.v<0.3&&target===0&&((!c.waitLight&&!c.queued)||c.wait>30))c.stuck+=dt;else c.stuck=0;
     if(c.stuck>3.5){c.ignore=2.5;c.stuck=0;} c.ignore-=dt;
     c.v+=clamp(target-c.v,-16*dt,4*dt);
     if(c.mode==='road'){c.s+=c.v*dt;if(c.s>=CH-12){const over=c.s-(CH-12);tStartTurn(c);c.t=over/c.len;}}
