@@ -15,23 +15,26 @@ function walk(dt,inp){
 }
 function carCollide(c){
   const pos=c.obj.position,s=Math.sin(c.h),co=Math.cos(c.h),boxes=gatherBoxes(pos.x,pos.z),cars=nearCars(pos.x,pos.z,8);let tx=0,tz=0;
-  for(const o of [-1.45,0,1.45]){const t={x:pos.x+s*o,z:pos.z+co*o},bx=t.x,bz=t.z;
-    pushBoxes(t,1.05,boxes);for(const oc of cars)pushCarOBB(t,1.05,oc);
+  const e=c.T.hl-0.8,rad=c.T.hw+0.05;  // three circles along the car's length
+  for(const o of [-e,0,e]){const t={x:pos.x+s*o,z:pos.z+co*o},bx=t.x,bz=t.z;
+    pushBoxes(t,rad,boxes);for(const oc of cars)pushCarOBB(t,rad,oc);
     const dx=t.x-bx,dz=t.z-bz;pos.x+=dx;pos.z+=dz;tx+=dx;tz+=dz;}
   return [tx,tz];}
 function drive(dt,inp){
-  const c=player.car,th=inp.y,st=-inp.x,v0=c.v,hb=inp.jump;
-  if(th>0)c.v+=(c.v<0?24:12)*th*dt;else if(th<0)c.v-=(c.v>0.5?26:7)*(-th)*dt;else c.v-=c.v*0.5*dt;
+  const c=player.car,T=c.T,th=inp.y,st=-inp.x,v0=c.v,hb=inp.jump;
+  // each type accelerates at its own rate, fading out as it nears its own top speed
+  if(th>0)c.v+=(c.v<0?24:T.accel*(1-Math.pow(clamp(c.v/T.top,0,1),4)))*th*dt;else if(th<0)c.v-=(c.v>0.5?26:7)*(-th)*dt;else c.v-=c.v*0.5*dt;
   if(hb)c.v*=Math.exp(-1.2*dt);  // handbrake: slows you, but mostly makes the back slide
-  c.v-=c.v*Math.abs(c.v)*0.006*dt;c.v=clamp(c.v,-9,34);
+  if(th<=0)c.v-=c.v*Math.abs(c.v)*0.006*dt;  // air drag when coasting; on the throttle the fade above sets the top speed
+  c.v=clamp(c.v,-9,T.top);
   c.steer+=(st-c.steer)*(1-Math.exp(-dt*8));c.wsteer=c.steer*0.55;
-  const sp=Math.abs(c.v),turn=c.steer*1.9*Math.min(1,sp/6)*(1-0.5*Math.min(1,sp/34))*Math.sign(c.v)*(hb?1.7:1);
+  const sp=Math.abs(c.v),turn=c.steer*1.9*T.steer*Math.min(1,sp/6)*(1-0.5*Math.min(1,sp/34))*Math.sign(c.v)*(hb?1.7:1);
   // drift: the car keeps its momentum when it turns, so it picks up sideways speed (vl, + = to the right),
   // and tyre grip removes it over time. Grip drops at high speed and a lot with the handbrake, so the back slides.
   let Vx=-Math.sin(c.h)*c.v+Math.cos(c.h)*c.vl,Vz=-Math.cos(c.h)*c.v-Math.sin(c.h)*c.vl;
   c.h+=turn*dt;const fx=-Math.sin(c.h),fz=-Math.cos(c.h),rx=-fz,rz=fx,pos=c.obj.position;
   c.v=Vx*fx+Vz*fz;c.vl=Vx*rx+Vz*rz;
-  c.vl*=Math.exp(-(hb?1.1:lerp(9,3.5,clamp((sp-14)/20,0,1)))*dt);
+  c.vl*=Math.exp(-(hb?1.1:lerp(9,3.5,clamp((sp-14)/20,0,1)))*T.grip*dt);
   pos.x+=(fx*c.v+rx*c.vl)*dt;pos.z+=(fz*c.v+rz*c.vl)*dt;
   const [hx,hz]=carCollide(c);
   if(hx||hz){const n=Math.hypot(hx,hz),nx=hx/n,nz=hz/n;Vx=fx*c.v+rx*c.vl;Vz=fz*c.v+rz*c.vl;const vn=Vx*nx+Vz*nz;
@@ -52,11 +55,11 @@ function drive(dt,inp){
 function interact(){
   if(!playing())return;const p=player;
   if(p.car){const c=p.car,pos=c.obj.position,co=Math.cos(c.h),s=Math.sin(c.h);
-    for(const side of [-1,1]){const t={x:pos.x+side*co*2.2,z:pos.z-side*s*2.2};
+    for(const side of [-1,1]){const t={x:pos.x+side*co*(c.T.hw+1.2),z:pos.z-side*s*(c.T.hw+1.2)};
       const blocked=gatherBoxes(t.x,t.z).some(b=>t.x>b[0]-0.4&&t.x<b[2]+0.4&&t.z>b[1]-0.4&&t.z<b[3]+0.4);
       if(!blocked||side===1){p.x=t.x;p.z=t.z;break;}}
     c.v=c.vl=0;c.steer=0;c.sy=c.svy=c.pa=c.pw=0;c.rig.position.y=0;c.rig.rotation.set(0,0,0);c.src='free';freeCars.push(c);scene.add(headlight,headlight.target);headlight.intensity=0;
     carThud(0.12);p.car=null;p.h=c.h;p.y=groundY(p.x,p.z);p.man.g.visible=true;p.man.g.position.set(p.x,p.y,p.z);return;}
   let best=null,bd=1.8;for(const c of nearCars(p.x,p.z,7)){const d=obbDist(p.x,p.z,c);if(d<bd){bd=d;best=c;}}
-  if(!best)return;carThud(0.12);detach(best);p.car=best;best.obj.add(headlight,headlight.target);p.man.g.visible=false;cam.lastLook=0;
+  if(!best)return;carThud(0.12);detach(best);p.car=best;headlight.position.set(0,1,-best.T.hl);best.obj.add(headlight,headlight.target);p.man.g.visible=false;cam.lastLook=0;
 }

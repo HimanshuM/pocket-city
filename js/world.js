@@ -88,7 +88,7 @@ function residential(k){
     for(const [g0,g1] of [[-0.9,0.9],[db-1.7,db+1.7]].sort((p,q)=>p[0]-q[0]).concat([[9.6,9.6]])){
       if(g0-b0>0.3){const [x,z,fsx,fsz]=pbox(9.4,0.2,(b0+g0)/2,g0-b0,0.9,0.12,0xf4f1ea);solid(k,x,z,fsx/2,fsz/2,1.1);}b0=g1;}
     for(const s of [-1,1])if(r()<0.6)tree(k,...at(-8.2,s*7.5),0.8+r()*0.3);
-    if(r()<0.25){const [x,z]=at(4.5,db),c=makeCar(pick(CAR_COLS,r));placeCar(c,k.ox+x,k.oz+z,Math.atan2(fx,fz));k.cars.push(c);}
+    if(r()<0.25){const [x,z]=at(4.5,db),c=makeCar(pick(CAR_COLS,r),pickCarType(r));placeCar(c,k.ox+x,k.oz+z,Math.atan2(fx,fz));k.cars.push(c);}
   }
   for(const t of [-21,-7,7,21]){ if(r()<0.7)tree(k,33,t,0.8); if(r()<0.7)tree(k,-33,t,0.8); if(r()<0.7)tree(k,t,33,0.8); if(r()<0.7)tree(k,t,-33,0.8); }
 }
@@ -144,7 +144,7 @@ function makeChunk(cx,cz){
   const ch={key,cx,cz,grp,meshes,boxes:k.boxes,parked:[],type:k.type,peds:!coast};
   for(const c of k.cars){c.src=ch;ch.parked.push(c);}
   if(!custom&&!coast) for(const [sx,sz,dx,dz] of [[1,0,0,1],[-1,0,0,-1],[0,1,-1,0],[0,-1,1,0]]){
-    if(r()>0.4)continue;const al=(r()-0.5)*(CH-30),c=makeCar(pick(CAR_COLS,r));
+    if(r()>0.4)continue;const al=(r()-0.5)*(CH-30),c=makeCar(pick(CAR_COLS,r),pickCarType(r));
     placeCar(c,ox+sx*35+(sx?0:al),oz+sz*35+(sz?0:al),Math.atan2(-dx,-dz));c.src=ch;ch.parked.push(c);}
   chunks.set(key,ch);
 }

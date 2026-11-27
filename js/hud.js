@@ -23,7 +23,7 @@ function drawMap(F){
 function updateHud(){
   const hrs=dayT*24,hh=Math.floor(hrs),mm=Math.floor((hrs-hh)*60);
   $('clock').textContent=String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
-  $('mode').textContent=player.car?Math.round(Math.abs(player.car.v)*3.6)+' km/h':(keys.ShiftLeft||keys.ShiftRight?'Running':'On foot');
+  $('mode').textContent=player.car?player.car.T.name+' · '+Math.round(Math.abs(player.car.v)*3.6)+' km/h':(keys.ShiftLeft||keys.ShiftRight?'Running':'On foot');
   $('stream').textContent=`Streaming ${chunks.size} blocks · ${traffic.length} cars · ${peds.filter(p=>p.ok).length} people`;
   let near=false;if(!player.car&&playing())for(const c of nearCars(player.x,player.z,7))if(obbDist(player.x,player.z,c)<1.8){near=true;break;}
   const hint=$('hint');hint.style.display=near?'block':'none';hint.textContent=coarse?'Tap Car to drive':'Press E to drive';

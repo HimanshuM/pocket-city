@@ -30,12 +30,13 @@ const GEARS=[0,8,15,22,29,40];  // m/s where each of the 5 gears starts
 function updateAudio(dt,inp){
   if(!actx)return;const c=player.car,t=actx.currentTime;
   if(!c||!playing()){eng.g.gain.setTargetAtTime(0,t,0.15);screech.g.gain.setTargetAtTime(0,t,0.05);return;}
-  const sp=Math.abs(c.v),thr=Math.abs(inp.y);let gi=0;while(gi<4&&sp>GEARS[gi+1])gi++;
+  // gears are spread over each car's own top speed; pitch makes vans deeper and sports cars higher
+  const sp=Math.abs(c.v)*34/c.T.top,thr=Math.abs(inp.y);let gi=0;while(gi<4&&sp>GEARS[gi+1])gi++;
   const tg=(sp-GEARS[gi])/(GEARS[gi+1]-GEARS[gi]);
   // revs climb through each gear and drop at the change; standing still, the throttle just revs the engine
   const target=sp<0.5?850+thr*1800:gi?2200+tg*2800:850+tg*4150;
   eng.rpm+=(target-eng.rpm)*(1-Math.exp(-dt*8));
-  const f=eng.rpm/15;  // 850 rpm ~ 57 Hz up to 5000 rpm ~ 333 Hz: low enough to hum, high enough for earphones to play
+  const f=eng.rpm/15*c.T.pitch;  // 850 rpm ~ 57 Hz up to 5000 rpm ~ 333 Hz: low enough to hum, high enough for earphones to play
   eng.o1.frequency.setTargetAtTime(f,t,0.03);eng.o2.frequency.setTargetAtTime(f/2,t,0.03);
   eng.lp.frequency.setTargetAtTime(250+eng.rpm*0.1+thr*250,t,0.05);
   eng.g.gain.setTargetAtTime(0.05+0.06*thr+0.02*tg,t,0.08);

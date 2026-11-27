@@ -1,19 +1,43 @@
 /* ---------- cars ---------- */
 const traffic=[],freeCars=[],MAXT=30;
-function makeCar(col){
-  const B=new GB(),L=new GB();
-  B.box(0,0.35,0,2,0.7,4.4,col);B.box(0,1.05,0.25,1.75,0.6,2.3,0x26303c);B.box(0,1.65,0.25,1.8,0.09,2.1,col);
-  B.box(0,0.3,-2.25,2.02,0.32,0.14,0x34373e);B.box(0,0.3,2.25,2.02,0.32,0.14,0x34373e);
-  for(const sx of [-1,1]){L.box(sx*0.65,0.72,-2.22,0.45,0.18,0.06,0xfff1c8);L.box(sx*0.65,0.78,2.22,0.45,0.16,0.06,0xff3030);}
+/* car types. Models face -z, y is the bottom of each box. hw/hl = half width/length (collisions), wr = wheel
+   radius, wx/wz = wheel positions, top = top speed in m/s (x 3.6 = km/h), accel/steer/grip = handling,
+   pitch = engine sound, cam = extra camera distance. */
+const GLASS=0x26303c,BUMP=0x34373e,HEAD=0xfff1c8,TAIL=0xff3030;
+function carLights(L,hl,yf,yr,w,hr=0.16){for(const sx of [-1,1]){L.box(sx*w,yf,-hl+0.03,0.42,0.16,0.06,HEAD);L.box(sx*w,yr,hl-0.03,0.42,hr,0.06,TAIL);}}
+const CAR_TYPES={
+  sedan:{name:'Sedan',top:34,accel:12,steer:1,grip:1,hw:1,hl:2.25,wr:0.35,wx:0.95,wz:1.38,pitch:1,cam:0,build(B,L,col){
+    B.box(0,0.35,0,2,0.7,4.4,col);B.box(0,1.05,0.25,1.75,0.6,2.3,GLASS);B.box(0,1.65,0.25,1.8,0.09,2.1,col);
+    B.box(0,0.3,-2.25,2.02,0.32,0.14,BUMP);B.box(0,0.3,2.25,2.02,0.32,0.14,BUMP);carLights(L,2.25,0.72,0.78,0.65);}},
+  hatch:{name:'Hatchback',top:29.2,accel:11,steer:1.15,grip:1,hw:0.93,hl:1.9,wr:0.32,wx:0.86,wz:1.15,pitch:1.12,cam:-0.5,build(B,L,col){
+    B.box(0,0.32,0,1.85,0.68,3.7,col);B.box(0,1,0.35,1.66,0.62,2.3,GLASS);B.box(0,1.6,0.35,1.7,0.08,2.15,col);
+    B.box(0,0.28,-1.88,1.87,0.3,0.12,BUMP);B.box(0,0.28,1.88,1.87,0.3,0.12,BUMP);carLights(L,1.9,0.7,0.85,0.6,0.3);}},
+  sports:{name:'Sports',top:41,accel:17,steer:1.1,grip:1.25,hw:0.98,hl:2.2,wr:0.34,wx:0.97,wz:1.42,pitch:1.2,cam:0,build(B,L,col){
+    B.box(0,0.3,0,1.95,0.5,4.4,col);B.box(0,0.8,0.3,1.55,0.42,1.8,GLASS);B.box(0,1.2,0.3,1.6,0.07,1.6,col);
+    B.box(0,0.8,-1.2,0.4,0.012,2,0xf4f4f0);  // bonnet stripe
+    for(const sx of [-1,1])B.box(sx*0.6,0.8,1.95,0.1,0.25,0.1,BUMP);B.box(0,1.05,1.95,1.9,0.07,0.45,col);  // spoiler
+    B.box(0,0.25,-2.2,1.97,0.25,0.12,BUMP);B.box(0,0.25,2.2,1.97,0.25,0.12,BUMP);carLights(L,2.2,0.62,0.66,0.62,0.12);}},
+  van:{name:'Van',top:26.4,accel:7.5,steer:0.85,grip:0.85,hw:1.03,hl:2.5,wr:0.38,wx:0.97,wz:1.75,pitch:0.8,cam:1.5,build(B,L,col){
+    B.box(0,0.38,0,2.05,1.95,5,col);B.box(0,1.45,-2.47,1.8,0.65,0.08,GLASS);B.box(0,1.55,-1.6,2.07,0.5,1.4,GLASS);
+    B.box(0,0.3,-2.5,2.07,0.35,0.14,BUMP);B.box(0,0.3,2.5,2.07,0.35,0.14,BUMP);carLights(L,2.5,0.85,1.1,0.75,0.45);}},
+  pickup:{name:'Pickup',top:30.5,accel:9,steer:0.9,grip:0.95,hw:1.03,hl:2.5,wr:0.38,wx:0.98,wz:1.7,pitch:0.85,cam:1,build(B,L,col){
+    B.box(0,0.4,0,2.05,0.75,5,col);B.box(0,1.15,-0.65,1.95,0.78,1.9,col);B.box(0,1.3,-0.65,1.97,0.45,1.5,GLASS);B.box(0,1.3,-1.61,1.7,0.45,0.04,GLASS);
+    for(const sx of [-1,1])B.box(sx*0.96,1.15,1.3,0.12,0.42,2.3,col);B.box(0,1.15,2.44,2.05,0.42,0.12,col);B.box(0,1.15,1.3,1.8,0.02,2.3,0x3a3a3a);  // load bed
+    B.box(0,0.32,-2.52,2.07,0.36,0.14,0xb8bdc4);B.box(0,0.32,2.52,2.07,0.36,0.14,0xb8bdc4);carLights(L,2.5,0.85,0.95,0.75,0.3);}},
+};
+const CAR_MIX=['sedan','sedan','sedan','hatch','hatch','hatch','van','van','pickup','pickup','sports'];  // traffic and parked cars
+const pickCarType=r=>CAR_MIX[(r()*CAR_MIX.length)|0];
+function makeCar(col,type='sedan'){
+  const T=CAR_TYPES[type],B=new GB(),L=new GB();T.build(B,L,col);
   const obj=new THREE.Group(),rig=new THREE.Group(),body=new THREE.Mesh(B.build(),propMat),lights=new THREE.Mesh(L.build(),carLightMat);
   body.castShadow=true;body.receiveShadow=true;rig.add(body,lights);obj.add(rig);scene.add(obj);
   // spin/wsteer drive the wheels; sy/svy (bounce) and pa/pw (nose up/down) are the body's springs
-  return {obj,rig,h:0,v:0,vl:0,steer:0,src:null,spin:0,wsteer:0,sy:0,svy:0,pa:0,pw:0,marks:[null,null]};
+  return {T,obj,rig,h:0,v:0,vl:0,steer:0,src:null,spin:0,wsteer:0,sy:0,svy:0,pa:0,pw:0,marks:[null,null]};
 }
 
 /* wheels: every car's wheels are drawn together as one instanced mesh, so the whole city's wheels cost one
    draw call. Each frame updateWheels places 4 wheels per nearby car, spinning with speed and steering at the front. */
-const WHEEL_R=0.35,WHEELS=[[-0.95,-1.38],[0.95,-1.38],[-0.95,1.38],[0.95,1.38]],WMAX=1024;  // front pair first (cars face -z)
+const WHEEL_R=0.35,WMAX=1024;  // the wheel model's radius; each car type scales it to its own wr
 function wheelGeometry(){  // a 12-sided tyre with a 5-sided hubcap (so you can see it turn), axle along x
   const pos=[],nor=[],col=[],idx=[];
   for(const [g,c] of [[new THREE.CylinderGeometry(WHEEL_R,WHEEL_R,0.3,12),0x1c1c20],[new THREE.CylinderGeometry(0.2,0.2,0.34,5),0xb8bdc4]]){
@@ -35,7 +59,7 @@ const MARKS=600,tyreMarks=new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1).r
 tyreMarks.count=0;tyreMarks.frustumCulled=false;scene.add(tyreMarks);let markNext=0;
 function layTyreMarks(c,sliding){
   const o=c.obj.position,s=Math.sin(c.h),co=Math.cos(c.h);
-  for(let i=0;i<2;i++){const lx=i?0.95:-0.95,x=o.x+lx*co+1.38*s,z=o.z-lx*s+1.38*co,last=c.marks[i];  // rear wheel in world space
+  for(let i=0;i<2;i++){const lx=i?c.T.wx:-c.T.wx,x=o.x+lx*co+c.T.wz*s,z=o.z-lx*s+c.T.wz*co,last=c.marks[i];  // rear wheel in world space
     c.marks[i]=sliding?{x,z}:null;if(!sliding||!last)continue;
     const dx=x-last.x,dz=z-last.z,len=Math.hypot(dx,dz);if(len<0.05||len>3)continue;
     _wp.set((x+last.x)/2,groundY(x,z)+0.14,(z+last.z)/2);  // high enough to sit on lawns, plazas and the stadium pitch
@@ -46,8 +70,8 @@ function layTyreMarks(c,sliding){
 function updateWheels(dt,F){
   let n=0;
   const add=c=>{const o=c.obj;if(n>WMAX-4||Math.abs(o.position.x-F.x)>170||Math.abs(o.position.z-F.z)>170)return;  // far cars are hidden by fog anyway
-    c.spin=(c.spin-c.v*dt/WHEEL_R)%(Math.PI*2);o.updateMatrix();
-    for(let i=0;i<4;i++){_we.set(c.spin,i<2?c.wsteer:0,0);_wq.setFromEuler(_we);_wp.set(WHEELS[i][0],WHEEL_R,WHEELS[i][1]);
+    const T=c.T,k=T.wr/WHEEL_R;c.spin=(c.spin-c.v*dt/T.wr)%(Math.PI*2);o.updateMatrix();_ws.set(1,k,k);
+    for(let i=0;i<4;i++){_we.set(c.spin,i<2?c.wsteer:0,0);_wq.setFromEuler(_we);_wp.set(i%2?T.wx:-T.wx,T.wr,i<2?-T.wz:T.wz);  // front pair first (cars face -z)
       wheels.setMatrixAt(n++,_wm.compose(_wp,_wq,_ws).premultiply(o.matrix));}};
   traffic.forEach(add);freeCars.forEach(add);if(player.car)add(player.car);
   for(const ch of chunks.values())ch.parked.forEach(add);
@@ -82,7 +106,7 @@ function spawnTraffic(c,F,init){
     const x=node[0]*CH-d[1]*3+d[0]*(6+s),z=node[1]*CH+d[0]*3+d[1]*(6+s),dist=Math.hypot(x-F.x,z-F.z);
     if(dist<(init?25:80)||dist>R*CH||Math.max(node[1],node[1]+d[1])>COAST_CZ)continue;  // no roads into the sea
     if(traffic.some(o=>o!==c&&Math.hypot(o.obj.position.x-x,o.obj.position.z-z)<12))continue;
-    if(!c){c=makeCar(pick(CAR_COLS,R0));c.src='traffic';traffic.push(c);}
+    if(!c){c=makeCar(pick(CAR_COLS,R0),pickCarType(R0));c.src='traffic';traffic.push(c);}
     Object.assign(c,{mode:'road',node,d,s,cruise:8+R0()*4,v:6,stuck:0,ignore:0});tPose(c);return;}
 }
 function updateTraffic(dt,F){

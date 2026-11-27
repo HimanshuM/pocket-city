@@ -85,7 +85,7 @@ When you change something visual or behavioural, verify it actually works. Don't
 **Collision:**
 - Every solid thing in a chunk is registered with `solid(k, lx, lz, halfX, halfZ, height)`, which stores `[minX, minZ, maxX, maxZ, height]` in world coordinates in `chunk.boxes`.
 - Anything you add that should block the player or cars, or stop the camera from going through it, needs a `solid(...)` call.
-- The player is a circle of radius 0.4. A car pushes as three circles of radius 1.05 along its length. Other cars are oriented boxes with half extents 1 × 2.25.
+- The player is a circle of radius 0.4. A car pushes as three circles (radius `hw + 0.05`) along its length. Other cars are oriented boxes with their type's half extents `hw × hl`.
 
 **Heading convention (used by player, cars, people):**
 - Models face local −z. `object.rotation.y = h`.
@@ -101,6 +101,7 @@ When you change something visual or behavioural, verify it actually works. Don't
 
 **Cars the player can use:**
 - Any car can be entered: traffic, parked or "free". A car's `src` says which list owns it, and `detach()` removes it from that list.
+- **Car types** (`CAR_TYPES` in `js/cars.js`): sedan 122 km/h, hatchback 105, sports 148, van 95, pickup 110. Each type has its own body (`build`), size (`hw`/`hl`, used for collisions and getting out), wheels (`wr`/`wx`/`wz`; the shared wheel instance is scaled to `wr`), handling (`top` in m/s, `accel`, `steer`, `grip`), engine `pitch` and camera distance (`cam`). Every car keeps its type as `c.T`. `makeCar(col, type)`; traffic and parked cars use `pickCarType(r)` (`CAR_MIX`; sports cars are rare). On the throttle, acceleration fades as `1 − (v/top)^4`, so each car settles exactly at its top speed; air drag applies only when coasting.
 - **Car body springs** (player's car): the car object follows the ground and `rig` (the body) lags on springs. `sy/svy` is the vertical bounce and `pa/pw` the nose pitch from acceleration. `wsteer` is the front-wheel angle (player: from steering; traffic: from how fast it's turning).
 - **Drift** (player's car, `drive()`): `c.v` is forward speed and `c.vl` sideways speed (+ = right). Turning keeps momentum, so sideways speed appears, and tyre grip removes it: high normally, lower at high speed, very low with the handbrake. Hitting things uses the full velocity: bounce on a hard hit, slide along on a scrape. Tyre marks (`layTyreMarks`) are one instanced mesh of the latest 600 strips, laid 0.14 m above `groundY` so they sit on lawns, plazas and the pitch.
 - **Driving camera** (`updateCamera`): after 1.2 s without mouse look, it swings behind the car, 60% of the way toward the actual direction of travel during a slide, catching up faster at speed. At speed it also sits lower, pulls back, widens the FOV, and looks a few metres ahead of the car. (A high-speed camera rumble was tried and removed: it fought with the speed blur.)

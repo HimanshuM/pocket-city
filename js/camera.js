@@ -13,7 +13,7 @@ function updateCamera(dt,F,now){
   // pitch > 0 orbits the camera above the player, looking down at them. pitch < 0 looks up: the camera stays
   // behind the player, drops and moves in a little, and tilts its view up by `up`, so the player slides down the screen.
   const up=Math.max(0,-cam.pitch),p=Math.max(0,cam.pitch),ku=Math.min(1,up/1.2);
-  const dist=(c?9.5+Math.abs(c.v)*0.08:5.5)*(1-0.35*ku),ty=F.y+(c?1.6:1.7);
+  const dist=(c?9.5+c.T.cam+Math.abs(c.v)*0.08:5.5)*(1-0.35*ku),ty=F.y+(c?1.6:1.7);
   camDir.set(Math.sin(cam.yaw)*Math.cos(p),Math.sin(p),Math.cos(cam.yaw)*Math.cos(p));
   const boxes=gatherBoxes(F.x,F.z);let d=dist;
   for(let s=1;s<=dist;s+=0.6){const x=F.x+camDir.x*s,y=ty+camDir.y*s,z=F.z+camDir.z*s;
